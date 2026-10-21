@@ -55,6 +55,11 @@ class BaseConfig:
     # Local AI Services
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+    OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
+    OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "8192"))
+    AI_MAX_TRANSCRIPT_CHARS = int(os.getenv("AI_MAX_TRANSCRIPT_CHARS", "32000"))
+    AI_MAX_OUTPUT_TOKENS = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "2048"))
+    AI_PROMPT_VERSION = os.getenv("AI_PROMPT_VERSION", "v1")
     WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
     WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
     WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
