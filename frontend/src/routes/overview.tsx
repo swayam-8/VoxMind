@@ -60,9 +60,9 @@ export function OverviewPage() {
     recordings.reduce((acc, r) => acc + (r.file_size_bytes || 0), 0) /
     (1024 * 1024)
   ).toFixed(1)
-  const readyCount = recordings.filter((r) => r.status === "ready").length
+  const readyCount = recordings.filter((r) => r.status === "ready" || r.status === "completed").length
   const pendingCount = recordings.filter(
-    (r) => r.status === "transcribing" || r.status === "queued"
+    (r) => r.status === "transcribing" || r.status === "processing" || r.status === "queued"
   ).length
 
   return (
@@ -276,11 +276,11 @@ export function OverviewPage() {
                     </div>
 
                     <div className="shrink-0 ml-3 flex items-center gap-2">
-                      {rec.status === "ready" && (
-                        <Badge variant="success">Ready</Badge>
+                      {(rec.status === "ready" || rec.status === "completed") && (
+                        <Badge variant="success">Completed</Badge>
                       )}
-                      {rec.status === "transcribing" && (
-                        <Badge variant="warning">Transcribing</Badge>
+                      {(rec.status === "transcribing" || rec.status === "processing") && (
+                        <Badge variant="warning" className="animate-pulse">Processing...</Badge>
                       )}
                       {rec.status === "queued" && (
                         <Badge variant="secondary">Queued</Badge>

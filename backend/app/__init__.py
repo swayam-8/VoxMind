@@ -4,6 +4,7 @@ import os
 from flask import Flask
 from app.config import get_config
 from app.extensions import db, migrate, cors
+from app.jobs.celery_app import make_celery
 from app.api.v1 import api_v1
 from app.api.v1.errors import register_error_handlers
 
@@ -24,6 +25,7 @@ def create_app(config_name: str | None = None) -> Flask:
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
+    make_celery(app)
     cors.init_app(
         app,
         resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}},

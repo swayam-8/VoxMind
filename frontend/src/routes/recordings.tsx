@@ -13,6 +13,7 @@ import {
   Trash2,
   Play,
   RotateCcw,
+  RotateCw,
   Sparkles,
   AlertCircle,
   FolderOpen,
@@ -64,7 +65,7 @@ export function RecordingsPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ApiRecording | null>(null)
 
-  // Real backend query via TanStack Query
+  // Real backend query via TanStack Query with live polling during processing
   const {
     data: response,
     isLoading,
@@ -80,6 +81,33 @@ export function RecordingsPage() {
         sort_by: sortBy,
         order,
       }),
+    refetchInterval: (query) => {
+      const recs = query.state.data?.data || []
+      const hasActive = recs.some(
+        (r) => r.status === "queued" || r.status === "processing" || r.status === "transcribing"
+      )
+      return hasActive ? 2500 : false
+    },
+  })
+
+  // Retry mutation
+  const retryMutation = useMutation({
+    mutationFn: (id: string) => apiClient.retryRecording(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recordings"] })
+      toast({
+        title: "Transcription Re-enqueued",
+        description: "The background queue has scheduled speech-to-text processing.",
+        variant: "success",
+      })
+    },
+    onError: (err) => {
+      toast({
+        title: "Retry Failed",
+        description: err instanceof Error ? err.message : "Could not re-enqueue transcription",
+        variant: "danger",
+      })
+    },
   })
 
   // Delete mutation
@@ -325,12 +353,14 @@ export function RecordingsPage() {
 
               {/* Status and Action Buttons */}
               <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                <div>
-                  {rec.status === "ready" && (
-                    <Badge variant="success">Ready</Badge>
+                <div className="flex items-center gap-2">
+                  {(rec.status === "ready" || rec.status === "completed") && (
+                    <Badge variant="success">Completed</Badge>
                   )}
-                  {rec.status === "transcribing" && (
-                    <Badge variant="warning">Transcribing</Badge>
+                  {(rec.status === "transcribing" || rec.status === "processing") && (
+                    <Badge variant="warning" className="animate-pulse">
+                      Processing...
+                    </Badge>
                   )}
                   {rec.status === "queued" && (
                     <Badge variant="secondary">Queued</Badge>
@@ -341,6 +371,19 @@ export function RecordingsPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  {rec.status === "failed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => retryMutation.mutate(rec.id)}
+                      isLoading={retryMutation.isPending}
+                      className="h-8 text-xs font-medium text-warning border-warning/30 hover:bg-warning-subtle"
+                      title="Retry Transcription"
+                    >
+                      <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry
+                    </Button>
+                  )}
+
                   <Link to={`/app/recordings/${rec.id}`}>
                     <Button
                       variant="secondary"
@@ -378,9 +421,15 @@ export function RecordingsPage() {
                   <div className="h-9 w-9 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent transition-colors">
                     <Mic className="h-4 w-4" />
                   </div>
-                  <div>
-                    {rec.status === "ready" && <Badge variant="success">Ready</Badge>}
-                    {rec.status === "transcribing" && <Badge variant="warning">Transcribing</Badge>}
+                  <div className="flex items-center gap-1.5">
+                    {(rec.status === "ready" || rec.status === "completed") && (
+                      <Badge variant="success">Completed</Badge>
+                    )}
+                    {(rec.status === "transcribing" || rec.status === "processing") && (
+                      <Badge variant="warning" className="animate-pulse">
+                        Processing...
+                      </Badge>
+                    )}
                     {rec.status === "queued" && <Badge variant="secondary">Queued</Badge>}
                     {rec.status === "failed" && <Badge variant="danger">Failed</Badge>}
                   </div>

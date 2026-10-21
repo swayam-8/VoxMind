@@ -128,6 +128,59 @@ OPENAPI_SPEC = {
                 },
             },
         },
+        "/recordings/{id}/transcript": {
+            "get": {
+                "summary": "Retrieve chronological transcript segments for a recording",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Chronological transcript segments"},
+                    "404": {"description": "Recording not found"},
+                },
+            },
+        },
+        "/recordings/{id}/retry": {
+            "post": {
+                "summary": "Re-enqueue transcription pipeline for a failed recording",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Transcription re-enqueued successfully"},
+                    "400": {"description": "Recording has already completed"},
+                    "404": {"description": "Recording not found"},
+                    "409": {"description": "Recording is currently being processed"},
+                },
+            },
+        },
+        "/jobs/{id}": {
+            "get": {
+                "summary": "Retrieve transcription job execution metadata and status",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Transcription job details"},
+                    "404": {"description": "Job not found"},
+                },
+            },
+        },
     },
 }
 

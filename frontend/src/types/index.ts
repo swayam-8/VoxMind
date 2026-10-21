@@ -4,8 +4,10 @@
 
 export type RecordingStatus =
   | "queued"
+  | "processing"
   | "transcribing"
   | "summarizing"
+  | "completed"
   | "ready"
   | "failed"
 
@@ -28,8 +30,11 @@ export interface Collection {
 
 export interface TranscriptSegment {
   id: string
-  startTime: number
-  endTime: number
+  segment_index?: number
+  start_time?: number
+  end_time?: number
+  startTime?: number
+  endTime?: number
   text: string
   confidence?: number
   speaker?: string

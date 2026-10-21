@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   Search,
@@ -12,6 +12,7 @@ import {
   Layers,
   Clock,
   RotateCcw,
+  RotateCw,
   AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,7 +33,9 @@ function formatTimestamp(seconds: number): string {
 export function RecordingDetailPage() {
   const { id } = useParams<{ id: string }>()
 
-  // Fetch real recording from REST API
+  const queryClient = useQueryClient()
+
+  // Fetch real recording from REST API with dynamic polling while queue/processing
   const {
     data: response,
     isLoading,
@@ -43,6 +46,32 @@ export function RecordingDetailPage() {
     queryKey: ["recording", id],
     queryFn: () => (id ? apiClient.getRecording(id) : Promise.reject(new Error("No ID"))),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.data?.status
+      const isProcessing =
+        status === "queued" || status === "processing" || status === "transcribing"
+      return isProcessing ? 2000 : false
+    },
+  })
+
+  // Retry mutation
+  const retryMutation = useMutation({
+    mutationFn: () => (id ? apiClient.retryRecording(id) : Promise.reject(new Error("No ID"))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recording", id] })
+      toast({
+        title: "Transcription Re-enqueued",
+        description: "Background worker has scheduled speech-to-text processing.",
+        variant: "success",
+      })
+    },
+    onError: (err) => {
+      toast({
+        title: "Retry Failed",
+        description: err instanceof Error ? err.message : "Could not retry transcription",
+        variant: "danger",
+      })
+    },
   })
 
   const recording = response?.data
@@ -177,9 +206,18 @@ export function RecordingDetailPage() {
               <h1 className="text-lg font-bold tracking-tight text-text-primary truncate">
                 {recording.title}
               </h1>
-              <Badge variant="success" className="text-[10px]">
-                {recording.status}
-              </Badge>
+              {(recording.status === "ready" || recording.status === "completed") && (
+                <Badge variant="success" className="text-[10px]">Completed</Badge>
+              )}
+              {(recording.status === "transcribing" || recording.status === "processing") && (
+                <Badge variant="warning" className="text-[10px] animate-pulse">Processing...</Badge>
+              )}
+              {recording.status === "queued" && (
+                <Badge variant="secondary" className="text-[10px]">Queued</Badge>
+              )}
+              {recording.status === "failed" && (
+                <Badge variant="danger" className="text-[10px]">Failed</Badge>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
               {recording.collection_name && (
@@ -233,6 +271,48 @@ export function RecordingDetailPage() {
         </div>
       </div>
 
+      {/* Live Processing and Failure State Alerts */}
+      {recording.status === "failed" && (
+        <div className="p-4 rounded-xl border border-danger/30 bg-danger-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-danger shrink-0" />
+            <div>
+              <h4 className="text-xs font-semibold text-danger">Transcription Failed</h4>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {recording.error_message || "An unexpected error occurred during audio transcription."}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => retryMutation.mutate()}
+            isLoading={retryMutation.isPending}
+            className="text-xs text-danger border-danger/40 hover:bg-danger/10 shrink-0"
+          >
+            <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry Transcription
+          </Button>
+        </div>
+      )}
+
+      {recording.status === "queued" && (
+        <div className="p-3.5 rounded-xl border border-border bg-surface-2/60 flex items-center gap-3">
+          <Clock className="w-4 h-4 text-text-muted shrink-0" />
+          <p className="text-xs text-text-secondary">
+            Recording is currently <strong>queued</strong> in Celery background queue. Local faster-whisper transcription will begin automatically.
+          </p>
+        </div>
+      )}
+
+      {(recording.status === "processing" || recording.status === "transcribing") && (
+        <div className="p-3.5 rounded-xl border border-accent/30 bg-accent-subtle/50 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
+          <p className="text-xs text-text-primary">
+            Transcribing speech locally with <strong>faster-whisper</strong>... Live timestamped dialogue segments will appear automatically.
+          </p>
+        </div>
+      )}
+
       {/* Main 2-Column Responsive Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Player & Transcript (7 cols) */}
@@ -277,8 +357,19 @@ export function RecordingDetailPage() {
             {/* Segments Scroll Container */}
             <div className="max-h-[500px] overflow-y-auto space-y-3 pr-2 divide-y divide-border/30">
               {segments.length === 0 ? (
-                <div className="py-8 text-center text-xs text-text-muted">
-                  Transcript will appear here once speech-to-text processing completes.
+                <div className="py-12 text-center text-xs text-text-muted space-y-2">
+                  {recording.status === "failed" ? (
+                    <p className="text-danger">Transcription failed. Click 'Retry Transcription' above to re-attempt.</p>
+                  ) : (recording.status === "processing" || recording.status === "transcribing") ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                      <p className="text-text-secondary">Generating timestamped dialogue segments...</p>
+                    </div>
+                  ) : recording.status === "queued" ? (
+                    <p>Recording is queued for speech transcription.</p>
+                  ) : (
+                    <p>No speech detected in this recording.</p>
+                  )}
                 </div>
               ) : filteredSegments.length === 0 ? (
                 <div className="py-8 text-center text-xs text-text-muted">
@@ -286,8 +377,10 @@ export function RecordingDetailPage() {
                 </div>
               ) : (
                 filteredSegments.map((seg) => {
-                  const isActive =
-                    currentTime >= seg.start_time && currentTime <= seg.end_time
+                  const sTime = (seg as any).start_time ?? (seg as any).startTime ?? 0
+                  const eTime = (seg as any).end_time ?? (seg as any).endTime ?? 0
+                  const conf = (seg as any).confidence ?? 1.0
+                  const isActive = currentTime >= sTime && currentTime <= eTime
 
                   return (
                     <div
@@ -302,19 +395,19 @@ export function RecordingDetailPage() {
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleSeek(seg.start_time)}
+                            onClick={() => handleSeek(sTime)}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-surface-2 text-accent border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all cursor-pointer"
                             title="Jump audio to this timestamp"
                           >
                             <Clock className="w-3 h-3" />
-                            {formatTimestamp(seg.start_time)}
+                            {formatTimestamp(sTime)}
                           </button>
                           <span className="text-xs font-semibold text-text-primary">
                             {seg.speaker}
                           </span>
                         </div>
                         <span className="text-[10px] font-mono text-text-muted">
-                          {(seg.confidence * 100).toFixed(0)}% conf
+                          {(conf * 100).toFixed(0)}% conf
                         </span>
                       </div>
 

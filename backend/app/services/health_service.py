@@ -121,7 +121,13 @@ class HealthService:
         except ImportError:
             whisper_installed = False
 
-        ffmpeg_installed = shutil.which("ffmpeg") is not None
+        try:
+            import av  # noqa: F401
+            av_installed = True
+        except ImportError:
+            av_installed = False
+
+        ffmpeg_installed = shutil.which("ffmpeg") is not None or av_installed
 
         if whisper_installed and ffmpeg_installed:
             status = "healthy"

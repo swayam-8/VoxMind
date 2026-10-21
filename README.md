@@ -159,30 +159,53 @@ npm run dev
 The frontend will be available at `http://localhost:5173`.  
 Navigate to `http://localhost:5173/showcase` to interact with the **Obsidian AI Component Showcase**.
 
-### 2. Backend Development
+### 2. Backend Development & Worker Execution
 
 ```powershell
+# 1. Start Redis (via Docker or local service)
+docker run -d --name voxmind-redis -p 6379:6379 redis:7-alpine
+
+# 2. Run Database Migrations / Seed data
 cd backend
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt -r requirements-dev.txt
-python wsgi.py
+.\.venv\Scripts\python seed.py
+
+# 3. Start Flask REST API Server
+.\.venv\Scripts\python wsgi.py
+
+# 4. Start Celery Background Transcription Worker (separate terminal)
+# On Windows, use threads pool:
+.\.venv\Scripts\celery -A celery_worker.celery worker --loglevel=info --pool=threads --concurrency=2
+# On Linux / macOS / Docker:
+celery -A celery_worker.celery worker --loglevel=info --concurrency=2 -Ofair
 ```
 
 The REST API will be available at `http://localhost:5000/api/v1`.
+Interactive Swagger UI documentation is available at `http://localhost:5000/api/v1/docs`.
 
 ### 3. Running Automated Tests
 
 ```powershell
-# Frontend typecheck & build
+# Frontend typecheck & production build
 npm run build --prefix frontend
 
 # Frontend lint check
 npm run lint --prefix frontend
 
-# Backend test suite
-cd backend
-.\.venv\Scripts\pytest
+# Backend test suite (Pytest with mock transcription inference)
+$env:PYTHONPATH="backend"; .\backend\.venv\Scripts\pytest backend\tests -v
+
+# Backend code hygiene (Flake8 linter)
+.\backend\.venv\Scripts\flake8 --config backend/.flake8 backend/app backend/tests
+```
+
+### 4. Running the Entire Stack with Docker Compose
+
+```powershell
+# Spin up PostgreSQL (pgvector), Redis, Flask REST API, Celery Worker, and Frontend
+docker compose up -d --build
+
+# View worker logs
+docker compose logs -f celery_worker
 ```
 
 ---
@@ -192,9 +215,9 @@ cd backend
 | Phase | Milestone | Status |
 |---|---|---|
 | **Phase 1** | **Architecture, Project Scaffolding & Obsidian Design System** | **Completed** |
-| Phase 2 | Database Models, Alembic Migrations & JWT Tenant Security | Next |
-| Phase 3 | Audio File Ingestion, Storage & Celery Transcription Pipeline | Pending |
-| Phase 4 | Recording Workspace, Interactive Player & Ollama Insights | Pending |
-| Phase 5 | Vector Chunking, Semantic Search & "Ask VoxMind" RAG | Pending |
-| Phase 6 | Collections, Developer API Keys & Live Diagnostics Hub | Pending |
-| Phase 7 | End-to-End Test Suite, Docker Compose & Final Hardening | Pending |
+| **Phase 2** | **Application Shell, Premium Routes & Interactive Audio Player** | **Completed** |
+| **Phase 3** | **Flask REST API, SQLAlchemy Models & Alembic Migrations** | **Completed** |
+| **Phase 4** | **Celery Background Queue + Local faster-whisper Transcription** | **Completed** |
+| Phase 5 | Ollama Local LLM Summarization, Action Items & Decision Extraction | Next |
+| Phase 6 | Vector Chunking, Semantic Search & "Ask VoxMind" RAG Engine | Pending |
+| Phase 7 | Collections, Developer API Keys & Live Diagnostics Hub | Pending |

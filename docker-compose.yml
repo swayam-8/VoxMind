@@ -68,7 +68,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: voxmind-celery
-    command: celery -A app.jobs.celery_app.celery worker --loglevel=info
+    command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2 -Ofair
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
@@ -77,6 +77,13 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_WORKER_CONCURRENCY=2
+      - CELERY_WORKER_PREFETCH_MULTIPLIER=1
+      - CELERY_TASK_TIME_LIMIT=1800
+      - CELERY_TASK_SOFT_TIME_LIMIT=1500
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
     volumes:

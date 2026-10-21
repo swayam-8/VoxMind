@@ -23,6 +23,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -57,6 +58,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
     }
 
     setIsUploading(true)
+    setUploadProgress(0)
     setError(null)
 
     const formData = new FormData()
@@ -66,8 +68,11 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
     }
 
     try {
-      const response = await apiClient.uploadRecording(formData)
+      const response = await apiClient.uploadRecordingWithProgress(formData, (percent) => {
+        setUploadProgress(percent)
+      })
       setIsUploading(false)
+      setUploadProgress(100)
       onOpenChange(false)
 
       onSuccess?.(response.data)
@@ -81,6 +86,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
       // Reset form
       setFile(null)
       setTitle("")
+      setUploadProgress(0)
     } catch (err) {
       setIsUploading(false)
       const msg = err instanceof Error ? err.message : "Failed to upload audio to backend"
@@ -142,6 +148,23 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
               </div>
             )}
           </div>
+
+          {isUploading && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-surface-2 border border-border">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-text-primary">
+                  {uploadProgress < 100 ? "Uploading audio file..." : "Finalizing and queueing task..."}
+                </span>
+                <span className="font-mono text-accent font-semibold">{uploadProgress}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent transition-all duration-200 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 text-xs text-danger p-2.5 rounded-md bg-danger-subtle border border-danger/20">
