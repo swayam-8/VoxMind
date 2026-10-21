@@ -2,7 +2,8 @@
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy.dialects.postgresql import UUID
+import sqlalchemy as sa
+from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions import db
 
 
@@ -11,21 +12,21 @@ class BaseModel(db.Model):
 
     __abstract__ = True
 
-    id = db.Column(
-        UUID(as_uuid=True),
+    id: Mapped[uuid.UUID] = mapped_column(
+        sa.Uuid(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
         nullable=False,
     )
 
-    created_at = db.Column(
-        db.DateTime(timezone=True),
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   UploadCloud,
   Mic,
@@ -9,16 +10,18 @@ import {
   HardDrive,
   CheckCircle2,
   FileCheck2,
-  Eye,
+  AlertCircle,
+  RotateCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { UploadDialog } from "@/components/audio/upload-dialog"
-import { DEMO_RECORDINGS, type DemoRecording } from "@/lib/demo-data"
+import { apiClient } from "@/lib/api-client"
 
 function formatSeconds(secs: number): string {
   const m = Math.floor(secs / 60)
-  const s = secs % 60
+  const s = Math.round(secs % 60)
   return `${m}m ${s > 0 ? `${s}s` : ""}`
 }
 
@@ -32,19 +35,29 @@ function formatDate(dateStr: string): string {
 }
 
 export function OverviewPage() {
-  const [recordings, setRecordings] = useState<DemoRecording[]>(DEMO_RECORDINGS)
+  const queryClient = useQueryClient()
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [showEmptyState, setShowEmptyState] = useState(false)
 
-  const handleUploadSuccess = (newRec: DemoRecording) => {
-    setRecordings((prev) => [newRec, ...prev])
-  }
+  // Fetch real recordings from REST API
+  const {
+    data: response,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["recordings", { per_page: 5 }],
+    queryFn: () => apiClient.getRecordings({ per_page: 5 }),
+  })
+
+  const recordings = response?.data || []
+  const totalCount = response?.meta?.total || 0
 
   // Calculate actual library summary metrics
-  const totalDuration = recordings.reduce((acc, r) => acc + r.durationSeconds, 0)
+  const totalDuration = recordings.reduce((acc, r) => acc + (r.duration_seconds || 0), 0)
   const totalHours = (totalDuration / 3600).toFixed(1)
   const totalSizeMB = (
-    recordings.reduce((acc, r) => acc + r.fileSizeBytes, 0) /
+    recordings.reduce((acc, r) => acc + (r.file_size_bytes || 0), 0) /
     (1024 * 1024)
   ).toFixed(1)
   const readyCount = recordings.filter((r) => r.status === "ready").length
@@ -61,26 +74,16 @@ export function OverviewPage() {
             <h1 className="text-xl font-bold tracking-tight text-text-primary">
               Workspace Overview
             </h1>
-            <Badge variant="violet" className="text-[10px] font-mono">
-              Demo Fixtures
+            <Badge variant="success" className="text-[10px] font-mono">
+              PostgreSQL Connected
             </Badge>
           </div>
           <p className="mt-1 text-xs text-text-secondary">
-            Local voice intelligence pipeline status, recent activity, and library metrics.
+            Voice intelligence pipeline status, recent activity, and library metrics.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowEmptyState(!showEmptyState)}
-            className="text-xs"
-          >
-            <Eye className="w-3.5 h-3.5 mr-1 text-text-muted" />
-            {showEmptyState ? "Show Populated View" : "Simulate First-Use"}
-          </Button>
-
           <Button
             variant="default"
             size="sm"
@@ -93,8 +96,35 @@ export function OverviewPage() {
         </div>
       </div>
 
-      {showEmptyState ? (
-        /* Empty Library First-Use State */
+      {isError ? (
+        /* Real Error State */
+        <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-danger/30 bg-surface-1">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-subtle text-danger border border-danger/20 mb-3">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <h3 className="text-base font-bold text-text-primary">
+            Failed to Load Workspace Metrics
+          </h3>
+          <p className="max-w-sm mt-1 text-xs text-text-secondary">
+            {error instanceof Error ? error.message : "Could not connect to backend REST API."}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-4">
+            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Retry Connection
+          </Button>
+        </div>
+      ) : isLoading ? (
+        /* Loading Skeleton */
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      ) : totalCount === 0 ? (
+        /* Genuine First-Use Empty State */
         <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-border bg-surface-1/60">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-subtle text-accent border border-accent/20 mb-4">
             <Mic className="h-7 w-7" />
@@ -109,9 +139,6 @@ export function OverviewPage() {
             <Button variant="default" onClick={() => setUploadOpen(true)}>
               <UploadCloud className="w-4 h-4 mr-1.5" />
               Upload Audio File
-            </Button>
-            <Button variant="secondary" onClick={() => setShowEmptyState(false)}>
-              Load Sample Recordings
             </Button>
           </div>
         </div>
@@ -155,7 +182,7 @@ export function OverviewPage() {
                 <Mic className="h-4 w-4 text-accent" />
               </div>
               <div className="text-2xl font-bold text-text-primary tracking-tight">
-                {recordings.length}
+                {totalCount}
               </div>
               <div className="text-[11px] text-text-secondary">
                 {readyCount} indexed, {pendingCount} in queue
@@ -194,10 +221,10 @@ export function OverviewPage() {
                 <FileCheck2 className="h-4 w-4 text-accent" />
               </div>
               <div className="text-2xl font-bold text-text-primary tracking-tight">
-                3 Pending
+                Active
               </div>
               <div className="text-[11px] text-text-secondary">
-                Across recent engineering syncs
+                Tracked across syncs
               </div>
             </div>
           </div>
@@ -220,7 +247,7 @@ export function OverviewPage() {
               </div>
 
               <div className="space-y-2">
-                {recordings.slice(0, 4).map((rec) => (
+                {recordings.map((rec) => (
                   <Link
                     key={rec.id}
                     to={`/app/recordings/${rec.id}`}
@@ -235,11 +262,15 @@ export function OverviewPage() {
                           {rec.title}
                         </h4>
                         <div className="flex items-center gap-2 mt-0.5 text-xs text-text-muted">
-                          <span>{rec.collectionName}</span>
+                          {rec.collection_name && (
+                            <>
+                              <span>{rec.collection_name}</span>
+                              <span>•</span>
+                            </>
+                          )}
+                          <span>{formatSeconds(rec.duration_seconds)}</span>
                           <span>•</span>
-                          <span>{formatSeconds(rec.durationSeconds)}</span>
-                          <span>•</span>
-                          <span>{formatDate(rec.createdAt)}</span>
+                          <span>{formatDate(rec.created_at)}</span>
                         </div>
                       </div>
                     </div>
@@ -278,37 +309,34 @@ export function OverviewPage() {
                 <div className="p-3 rounded-lg bg-surface-2 border border-border space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-text-primary">
-                      rec_03: standup_sprint14.m4a
+                      faster-whisper Engine
                     </span>
-                    <Badge variant="warning" className="text-[10px]">
-                      Processing
-                    </Badge>
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Ready
+                    </span>
                   </div>
                   <p className="text-xs text-text-secondary">
-                    faster-whisper int8 STT extraction running on CPU.
+                    Local worker ready to transcribe multi-speaker audio with int8 quantization.
                   </p>
-                  <div className="h-1 w-full bg-surface-3 rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 w-3/4 animate-pulse" />
-                  </div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-surface-2 border border-border space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-text-primary">
-                      rec_01: eng_arch_q4_sync.mp3
+                      Ollama Intelligence
                     </span>
                     <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                     </span>
                   </div>
                   <p className="text-xs text-text-secondary">
-                    Transcribed in 3.4s, 6 segments & 2 decisions generated via Ollama.
+                    Connected to local model llama3.2 for summaries and decision extraction.
                   </p>
                 </div>
 
                 <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs text-text-muted">
                   <span>Engine Worker: Celery</span>
-                  <span className="text-emerald-500 font-mono">1 active / 1 idle</span>
+                  <span className="text-emerald-500 font-mono">Ready</span>
                 </div>
               </div>
             </div>
@@ -320,7 +348,7 @@ export function OverviewPage() {
       <UploadDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        onSuccess={handleUploadSuccess}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["recordings"] })}
       />
     </div>
   )

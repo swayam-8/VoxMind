@@ -10,28 +10,19 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { toast } from "@/hooks/use-toast"
-import { DEMO_COLLECTIONS, type DemoRecording } from "@/lib/demo-data"
+import { apiClient, type ApiRecording } from "@/lib/api-client"
 
 interface UploadDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: (newRecording: DemoRecording) => void
+  onSuccess?: (newRecording: ApiRecording) => void
 }
 
 export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProps) {
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
-  const [collectionId, setCollectionId] = useState("col-1")
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -59,7 +50,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
     }
   }
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file) {
       setError("Please select an audio file to upload.")
       return
@@ -67,55 +58,38 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
 
     setIsUploading(true)
     setError(null)
-    setUploadProgress(15)
 
-    const timer1 = setTimeout(() => setUploadProgress(55), 400)
-    const timer2 = setTimeout(() => setUploadProgress(90), 800)
-    const timer3 = setTimeout(() => {
+    const formData = new FormData()
+    formData.append("file", file)
+    if (title.trim()) {
+      formData.append("title", title.trim())
+    }
+
+    try {
+      const response = await apiClient.uploadRecording(formData)
       setIsUploading(false)
-      setUploadProgress(100)
       onOpenChange(false)
 
-      const col = DEMO_COLLECTIONS.find((c) => c.id === collectionId)
-      const newRec: DemoRecording = {
-        id: `rec-${Date.now().toString(36)}`,
-        title: title || file.name,
-        filename: file.name,
-        fileSizeBytes: file.size,
-        durationSeconds: 420, // default placeholder duration
-        mimeType: file.type || "audio/mpeg",
-        status: "transcribing",
-        collectionId: collectionId,
-        collectionName: col ? col.name : "Default Collection",
-        createdAt: new Date().toISOString(),
-        segments: [],
-        insight: {
-          summaryMarkdown: "Processing transcription with faster-whisper...",
-          decisions: [],
-          actionItems: [],
-          topics: ["new-recording"],
-          modelUsed: "faster-whisper:base",
-        },
-      }
-
-      onSuccess?.(newRec)
+      onSuccess?.(response.data)
 
       toast({
         title: "Audio Uploaded Successfully",
-        description: `"${newRec.title}" dispatched to Celery transcription queue.`,
+        description: `"${response.data.title}" queued for speech-to-text processing.`,
         variant: "success",
       })
 
       // Reset form
       setFile(null)
       setTitle("")
-      setUploadProgress(0)
-    }, 1200)
-
-    return () => {
-      clearTimeout(timer1)
-      clearTimeout(timer2)
-      clearTimeout(timer3)
+    } catch (err) {
+      setIsUploading(false)
+      const msg = err instanceof Error ? err.message : "Failed to upload audio to backend"
+      setError(msg)
+      toast({
+        title: "Upload Failed",
+        description: msg,
+        variant: "danger",
+      })
     }
   }
 
@@ -125,7 +99,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
         <DialogHeader>
           <DialogTitle>Upload Audio Recording</DialogTitle>
           <DialogDescription>
-            Audio is processed locally with faster-whisper and Ollama. Data remains under your control.
+            Audio is securely uploaded to your local storage volume and queued for transcription.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,51 +156,12 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
               Recording Title
             </label>
             <Input
-              placeholder="e.g. Q4 Platform Engineering Sync"
+              placeholder="e.g. Platform Architecture Review"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isUploading}
             />
           </div>
-
-          {/* Collection Selector */}
-          <div>
-            <label className="text-xs font-medium text-text-secondary mb-1.5 block">
-              Assign to Collection
-            </label>
-            <Select
-              value={collectionId}
-              onValueChange={setCollectionId}
-              disabled={isUploading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Collection" />
-              </SelectTrigger>
-              <SelectContent>
-                {DEMO_COLLECTIONS.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Upload Progress Bar */}
-          {isUploading && (
-            <div className="space-y-1.5 pt-2">
-              <div className="flex justify-between text-xs text-text-secondary font-mono">
-                <span>Ingesting audio payload...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="h-1.5 w-full bg-surface-3 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${uploadProgress}%` }}
-                  className="h-full bg-accent transition-all duration-300"
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         <DialogFooter className="pt-2">
@@ -244,7 +179,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
             disabled={!file || isUploading}
           >
             <CheckCircle2 className="w-4 h-4 mr-1.5" />
-            Upload & Transcribe
+            Upload & Queue
           </Button>
         </DialogFooter>
       </DialogContent>

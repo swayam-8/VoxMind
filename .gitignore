@@ -43,6 +43,8 @@ dist-ssr/
 .env.*.local
 *.pem
 *.key
+*.db
+instance/
 
 # Audio & Media Storage
 uploads/
