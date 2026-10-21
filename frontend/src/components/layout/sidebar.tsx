@@ -1,5 +1,5 @@
 import React from "react"
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   LayoutDashboard,
   Mic,
@@ -8,9 +8,19 @@ import {
   KeyRound,
   Settings,
   AudioWaveform,
-  Layers,
+  LogOut,
+  User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "@/hooks/use-toast"
 
 interface SidebarProps {
   isOpen: boolean
@@ -25,17 +35,27 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Overview", href: "/", icon: LayoutDashboard },
-  { title: "Recordings", href: "/recordings", icon: Mic },
-  { title: "Ask VoxMind", href: "/ask", icon: MessageSquareText },
-  { title: "Collections", href: "/collections", icon: FolderOpen },
-  { title: "API & Integrations", href: "/integrations", icon: KeyRound },
-  { title: "Settings", href: "/settings", icon: Settings },
-  { title: "Design System", href: "/showcase", icon: Layers, badge: "Phase 1" },
+  { title: "Overview", href: "/app/overview", icon: LayoutDashboard },
+  { title: "Recordings", href: "/app/recordings", icon: Mic },
+  { title: "Ask VoxMind", href: "/app/ask", icon: MessageSquareText },
+  { title: "Collections", href: "/app/collections", icon: FolderOpen },
+  { title: "API & Integrations", href: "/app/api", icon: KeyRound },
+  { title: "Settings", href: "/app/settings", icon: Settings },
 ]
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    localStorage.removeItem("voxmind_access_token")
+    toast({
+      title: "Signed Out",
+      description: "You have been logged out of your session.",
+      variant: "default",
+    })
+    navigate("/login")
+  }
 
   return (
     <>
@@ -43,29 +63,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-xs md:hidden"
         />
       )}
 
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-surface-1 transition-transform duration-200 ease-in-out md:static md:translate-x-0",
+          "fixed top-0 bottom-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-surface-1 transition-transform duration-200 ease-in-out md:static md:translate-x-0 shrink-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Brand header */}
         <div className="flex h-14 items-center gap-2.5 px-5 border-b border-border">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 border border-accent/30 text-accent">
-            <AudioWaveform className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight text-text-primary">
-              VoxMind
-            </span>
-            <span className="text-[10px] text-text-muted font-mono tracking-wider">
-              VOICE INTELLIGENCE
-            </span>
-          </div>
+          <Link
+            to="/app/overview"
+            className="flex items-center gap-2.5 group focus:outline-none"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-subtle border border-accent/30 text-accent group-hover:border-accent/60 transition-colors">
+              <AudioWaveform className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold tracking-tight text-text-primary">
+                VoxMind
+              </span>
+              <span className="text-[10px] text-text-muted font-mono tracking-wider">
+                VOICE INTELLIGENCE
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* Navigation list */}
@@ -75,7 +100,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = location.pathname === item.href
+            // Match exact or child routes
+            const isActive =
+              location.pathname === item.href ||
+              (item.href !== "/app/overview" && location.pathname.startsWith(item.href))
 
             return (
               <Link
@@ -103,15 +131,43 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Footer info */}
-        <div className="p-3 border-t border-border bg-surface-1/50">
-          <div className="flex items-center justify-between text-xs text-text-muted px-2 py-1">
-            <span>Local Engine</span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-              v1.0.0-rc
-            </span>
-          </div>
+        {/* User Account Controls */}
+        <div className="p-3 border-t border-border bg-surface-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-surface-2 transition-colors text-left focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                aria-label="User Account Menu"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-semibold shrink-0">
+                    JD
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-text-primary truncate">
+                      Jane Doe
+                    </p>
+                    <p className="text-[11px] text-text-muted truncate">
+                      jane@voxmind.internal
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-56 mb-2">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigate("/app/settings")}>
+                <User className="mr-2 h-4 w-4 text-text-secondary" />
+                <span>Profile & Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-danger focus:text-danger">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </>
