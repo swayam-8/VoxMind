@@ -10,6 +10,8 @@ from app.models.collection import Collection
 from app.models.recording import Recording
 from app.models.transcript import TranscriptSegment
 from app.models.insight import Summary, ActionItem
+from app.models.api_key import ApiKey, ApiUsageRecord
+from app.utils.auth import generate_api_key
 
 app = create_app()
 
@@ -270,6 +272,82 @@ with app.app_context():
             topics=["compliance", "air-gapped", "data residency"],
         )
         db.session.add(sum2)
+
+    # 4. Developer API Key
+    existing_key = db.session.query(ApiKey).filter_by(workspace_id=workspace.id).first()
+    if not existing_key:
+        raw_key, key_prefix, key_hash = generate_api_key()
+        demo_key = ApiKey(
+            id=uuid.uuid4(),
+            workspace_id=workspace.id,
+            user_id=user.id,
+            name="CI/CD Ingestion Service",
+            key_hash=key_hash,
+            key_prefix=key_prefix,
+            is_revoked=False,
+        )
+        db.session.add(demo_key)
+        db.session.flush()
+
+        # Seed initial AI token and request usage
+        records = [
+            ApiUsageRecord(
+                workspace_id=workspace.id,
+                api_key_id=demo_key.id,
+                endpoint="/api/v1/recordings",
+                method="POST",
+                status_code=201,
+                response_time_ms=42.5,
+                resource_type="api_request",
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                duration_seconds=0.0,
+            ),
+            ApiUsageRecord(
+                workspace_id=workspace.id,
+                api_key_id=demo_key.id,
+                endpoint="/api/v1/jobs/transcribe",
+                method="BACKGROUND",
+                status_code=200,
+                response_time_ms=1240.0,
+                resource_type="transcription",
+                model_name="faster-whisper:base",
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                duration_seconds=2264.0,
+            ),
+            ApiUsageRecord(
+                workspace_id=workspace.id,
+                api_key_id=demo_key.id,
+                endpoint="/api/v1/recordings/analysis",
+                method="BACKGROUND",
+                status_code=200,
+                response_time_ms=3100.0,
+                resource_type="summary",
+                model_name="llama3.2",
+                prompt_tokens=1480,
+                completion_tokens=420,
+                total_tokens=1900,
+                duration_seconds=0.0,
+            ),
+            ApiUsageRecord(
+                workspace_id=workspace.id,
+                api_key_id=demo_key.id,
+                endpoint="/api/v1/knowledge/ask",
+                method="POST",
+                status_code=200,
+                response_time_ms=850.0,
+                resource_type="rag",
+                model_name="llama3.2",
+                prompt_tokens=850,
+                completion_tokens=180,
+                total_tokens=1030,
+                duration_seconds=0.0,
+            ),
+        ]
+        db.session.add_all(records)
 
     db.session.commit()
     print("Database successfully seeded with realistic enterprise voice intelligence records.")

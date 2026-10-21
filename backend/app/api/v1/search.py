@@ -8,6 +8,7 @@ from app.utils.response import api_error, api_success
 from app.services.workspace_service import WorkspaceService
 from app.services.search_service import SearchService
 from app.services.rag_service import RAGService
+from app.services.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,19 @@ def search_recordings():
             mode=mode,
         )
 
+        try:
+            UsageService.record_usage(
+                workspace_id=workspace.id,
+                endpoint="/api/v1/search",
+                method="POST",
+                status_code=200,
+                resource_type="rag" if mode != "keyword" else "api_request",
+                prompt_tokens=max(1, len(query.split())),
+                total_tokens=max(1, len(query.split())),
+            )
+        except Exception:
+            pass
+
         return api_success(
             data={
                 "query": query,
@@ -164,6 +178,23 @@ def ask_knowledge():
             recording_ids=rec_ids,
             max_passages=max_passages,
         )
+
+        try:
+            prompt_toks = max(5, len(question.split()) * 2)
+            comp_toks = max(5, len(result.get("answer", "").split()))
+            UsageService.record_usage(
+                workspace_id=workspace.id,
+                endpoint="/api/v1/knowledge/ask",
+                method="POST",
+                status_code=200,
+                resource_type="rag",
+                model_name=result.get("model_name"),
+                prompt_tokens=prompt_toks,
+                completion_tokens=comp_toks,
+                total_tokens=prompt_toks + comp_toks,
+            )
+        except Exception:
+            pass
 
         return api_success(data=result)
     except Exception as exc:

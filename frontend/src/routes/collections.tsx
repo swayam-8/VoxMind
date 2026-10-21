@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import {
   FolderOpen,
@@ -6,6 +6,8 @@ import {
   ArrowRight,
   Trash2,
   Calendar,
+  Loader2,
+  FolderPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,47 +21,87 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "@/hooks/use-toast"
-import { DEMO_COLLECTIONS, type DemoCollection } from "@/lib/demo-data"
+import { apiClient, type ApiCollection } from "@/lib/api-client"
 
 export function CollectionsPage() {
-  const [collections, setCollections] = useState<DemoCollection[]>(DEMO_COLLECTIONS)
+  const [collections, setCollections] = useState<ApiCollection[]>([])
+  const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [selectedColor, setSelectedColor] = useState("#8B5CF6")
 
-  const handleCreate = (e: React.FormEvent) => {
+  useEffect(() => {
+    let ignore = false
+    const init = async () => {
+      try {
+        setLoading(true)
+        const res = await apiClient.getCollections()
+        if (!ignore) setCollections(res.data || [])
+      } catch {
+        if (!ignore) setCollections([])
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    }
+    void init()
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
 
-    const newCol: DemoCollection = {
-      id: `col-${Date.now().toString(36)}`,
-      name,
-      description: description || "No description provided.",
-      color: selectedColor,
-      recordingCount: 0,
-      createdAt: new Date().toISOString(),
+    try {
+      setIsSubmitting(true)
+      const res = await apiClient.createCollection({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        color: selectedColor,
+      })
+
+      setCollections((prev) => [res.data, ...prev])
+      setName("")
+      setDescription("")
+      setDialogOpen(false)
+
+      toast({
+        title: "Collection Created",
+        description: `"${res.data.name}" added to workspace.`,
+        variant: "success",
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create collection"
+      toast({
+        title: "Creation Failed",
+        description: msg,
+        variant: "danger",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setCollections((prev) => [...prev, newCol])
-    setName("")
-    setDescription("")
-    setDialogOpen(false)
-
-    toast({
-      title: "Collection Created",
-      description: `"${newCol.name}" added to workspace.`,
-      variant: "success",
-    })
   }
 
-  const handleDelete = (id: string, colName: string) => {
-    setCollections((prev) => prev.filter((c) => c.id !== id))
-    toast({
-      title: "Collection Deleted",
-      description: `"${colName}" was deleted. Recordings have been unassigned.`,
-      variant: "danger",
-    })
+  const handleDelete = async (id: string, colName: string) => {
+    try {
+      await apiClient.deleteCollection(id)
+      setCollections((prev) => prev.filter((c) => c.id !== id))
+      toast({
+        title: "Collection Deleted",
+        description: `"${colName}" was deleted. Recordings have been unassigned.`,
+        variant: "danger",
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete collection"
+      toast({
+        title: "Delete Failed",
+        description: msg,
+        variant: "danger",
+      })
+    }
   }
 
   const COLOR_OPTIONS = [
@@ -99,60 +141,91 @@ export function CollectionsPage() {
         </Button>
       </div>
 
-      {/* Grid of Collections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {collections.map((col) => (
-          <div
-            key={col.id}
-            className="flex flex-col justify-between p-5 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all space-y-4 group"
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div
-                  style={{ backgroundColor: `${col.color}20`, borderColor: `${col.color}40`, color: col.color }}
-                  className="h-10 w-10 rounded-lg border flex items-center justify-center shrink-0"
-                >
-                  <FolderOpen className="h-5 w-5" />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Badge variant="secondary" className="font-mono text-xs">
-                    {col.recordingCount} recordings
-                  </Badge>
-                  <button
-                    onClick={() => handleDelete(col.id, col.name)}
-                    className="p-1.5 text-text-muted hover:text-danger rounded transition-colors"
-                    aria-label="Delete collection"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-base font-bold text-text-primary group-hover:text-accent transition-colors">
-                  {col.name}
-                </h3>
-                <p className="text-xs text-text-secondary line-clamp-2 mt-1">
-                  {col.description}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs text-text-muted">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                {new Date(col.createdAt).toLocaleDateString()}
-              </span>
-              <Link
-                to="/app/recordings"
-                className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
-              >
-                Browse Audio <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+      {loading ? (
+        <div className="py-16 flex flex-col items-center justify-center text-text-muted space-y-2">
+          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+          <span className="text-xs">Loading collections...</span>
+        </div>
+      ) : collections.length === 0 ? (
+        <div className="p-12 text-center border border-dashed border-border rounded-2xl bg-surface-1/40 space-y-3">
+          <div className="w-12 h-12 rounded-xl bg-accent-subtle/50 text-accent flex items-center justify-center mx-auto">
+            <FolderPlus className="w-6 h-6" />
           </div>
-        ))}
-      </div>
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary">No collections yet</h3>
+            <p className="text-xs text-text-muted mt-1 max-w-sm mx-auto">
+              Create your first collection to group and organize recordings for executive reviews or client deliveries.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            className="mt-2 text-xs"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" /> Create Collection
+          </Button>
+        </div>
+      ) : (
+        /* Grid of Collections */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {collections.map((col) => (
+            <div
+              key={col.id}
+              className="flex flex-col justify-between p-5 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all space-y-4 group"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div
+                    style={{
+                      backgroundColor: `${col.color}20`,
+                      borderColor: `${col.color}40`,
+                      color: col.color,
+                    }}
+                    className="h-10 w-10 rounded-lg border flex items-center justify-center shrink-0"
+                  >
+                    <FolderOpen className="h-5 w-5" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {col.recording_count ?? 0} recordings
+                    </Badge>
+                    <button
+                      onClick={() => handleDelete(col.id, col.name)}
+                      className="p-1.5 text-text-muted hover:text-danger rounded transition-colors"
+                      aria-label="Delete collection"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-text-primary group-hover:text-accent transition-colors">
+                    {col.name}
+                  </h3>
+                  <p className="text-xs text-text-secondary line-clamp-2 mt-1">
+                    {col.description || "No description provided."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs text-text-muted">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {new Date(col.created_at).toLocaleDateString()}
+                </span>
+                <Link
+                  to={`/app/recordings?collection_id=${col.id}`}
+                  className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                >
+                  Browse Audio <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Create Collection Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -215,11 +288,23 @@ export function CollectionsPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => setDialogOpen(false)}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="default" disabled={!name.trim()}>
-                Create Collection
+              <Button
+                type="submit"
+                variant="default"
+                disabled={!name.trim() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Collection"
+                )}
               </Button>
             </DialogFooter>
           </form>

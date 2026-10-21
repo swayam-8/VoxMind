@@ -47,9 +47,15 @@ class ApiKey(BaseModel):
         "ApiUsageRecord", back_populates="api_key", cascade="all, delete-orphan"
     )
 
+    def to_dict(self) -> dict:
+        """Safe representation omitting secret hash."""
+        data = super().to_dict()
+        data.pop("key_hash", None)
+        return data
+
 
 class ApiUsageRecord(BaseModel):
-    """Logs individual programmatic requests for usage metrics and rate limiting."""
+    """Logs individual programmatic requests and AI token usage."""
 
     __tablename__ = "api_usage_records"
 
@@ -69,6 +75,16 @@ class ApiUsageRecord(BaseModel):
     method: Mapped[str] = mapped_column(sa.String(16), nullable=False)
     status_code: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     response_time_ms: Mapped[float] = mapped_column(sa.Float, nullable=False)
+
+    # Phase 7 AI Token and Resource Accounting
+    resource_type: Mapped[str] = mapped_column(
+        sa.String(32), default="api_request", nullable=False, index=True
+    )
+    model_name: Mapped[Optional[str]] = mapped_column(sa.String(64), nullable=True)
+    prompt_tokens: Mapped[int] = mapped_column(sa.Integer, default=0, nullable=False)
+    completion_tokens: Mapped[int] = mapped_column(sa.Integer, default=0, nullable=False)
+    total_tokens: Mapped[int] = mapped_column(sa.Integer, default=0, nullable=False)
+    duration_seconds: Mapped[float] = mapped_column(sa.Float, default=0.0, nullable=False)
 
     # Relationships
     api_key: Mapped[Optional["ApiKey"]] = relationship("ApiKey", back_populates="usage_records")

@@ -69,6 +69,7 @@ def readiness_check():
 
 
 @health_bp.route("/health/detailed", methods=["GET"])
+@health_bp.route("/diagnostics", methods=["GET"])
 def health_detailed():
     """Deep readiness and dependency diagnostics check."""
     diagnostics = HealthService.get_full_diagnostics()

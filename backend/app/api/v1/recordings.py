@@ -13,6 +13,7 @@ from app.models.insight import Summary, ActionItem
 from app.services.workspace_service import WorkspaceService
 from app.services.audio_service import AudioService, AudioValidationError
 from app.services.ollama_service import OllamaService, OllamaServiceError
+from app.services.usage_service import UsageService
 from app.jobs.tasks import (
     transcribe_recording_task,
     analyze_recording_task,
@@ -402,6 +403,56 @@ def delete_recording(recording_id: uuid.UUID):
         )
 
 
+@recordings_bp.route("/<uuid:recording_id>", methods=["PATCH"])
+def update_recording(recording_id: uuid.UUID):
+    """Update recording metadata such as title and collection assignment."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    payload = request.get_json(silent=True) or {}
+
+    if "title" in payload:
+        new_title = str(payload["title"]).strip()
+        if not new_title:
+            return api_error("Title cannot be empty", code="VALIDATION_ERROR", status_code=400)
+        recording.title = new_title[:255]
+
+    if "collection_id" in payload:
+        raw_col = payload["collection_id"]
+        if raw_col is None or raw_col == "" or raw_col == "null":
+            recording.collection_id = None
+        else:
+            try:
+                col_uuid = uuid.UUID(str(raw_col))
+                # Validate collection belongs to same workspace
+                col = (
+                    db.session.query(Collection)
+                    .filter(Collection.id == col_uuid, Collection.workspace_id == workspace.id)
+                    .first()
+                )
+                if not col:
+                    return api_error(
+                        "Target collection not found in workspace",
+                        code="NOT_FOUND",
+                        status_code=404,
+                    )
+                recording.collection_id = col_uuid
+            except ValueError:
+                return api_error(
+                    "Invalid collection UUID", code="VALIDATION_ERROR", status_code=400
+                )
+
+    db.session.commit()
+    return api_success(data=recording.to_dict(), message="Recording updated successfully")
+
+
 @recordings_bp.route("/<uuid:recording_id>/analysis", methods=["GET"])
 def get_recording_analysis(recording_id: uuid.UUID):
     """Retrieve AI intelligence analysis (summary, takeaways, decisions, actions, topics)."""
@@ -615,6 +666,24 @@ def ask_recording_question(recording_id: uuid.UUID):
 
     try:
         answer_result = OllamaService.answer_question(transcript_text, question)
+
+        try:
+            p_toks = max(5, len(question.split()) * 2)
+            c_toks = max(5, len(answer_result.get("answer", "").split()))
+            UsageService.record_usage(
+                workspace_id=workspace.id,
+                endpoint=f"/api/v1/recordings/{recording.id}/ask",
+                method="POST",
+                status_code=200,
+                resource_type="qa",
+                model_name=answer_result.get("model_name"),
+                prompt_tokens=p_toks,
+                completion_tokens=c_toks,
+                total_tokens=p_toks + c_toks,
+            )
+        except Exception:
+            pass
+
         return api_success(
             data={
                 "recording_id": str(recording.id),

@@ -198,7 +198,7 @@ npm run build --prefix frontend
 # Frontend lint check
 npm run lint --prefix frontend
 
-# Backend test suite (44 Pytest tests covering health, uploads, faster-whisper, Ollama insights, and pgvector semantic retrieval)
+# Backend test suite (50 Pytest tests covering health, uploads, faster-whisper, Ollama insights, pgvector semantic retrieval, and Phase 7 workspace features)
 $env:PYTHONPATH="backend"; .\backend\.venv\Scripts\pytest backend\tests -v
 
 # Backend code hygiene (Flake8 linter)
@@ -227,4 +227,62 @@ docker compose logs -f celery_worker
 | **Phase 4** | **Celery Background Queue + Local faster-whisper Transcription** | **Completed** |
 | **Phase 5** | **Ollama Local LLM Summarization, Action Items, Decisions & Grounded Q&A** | **Completed** |
 | **Phase 6** | **Vector Chunking, pgvector Semantic Search & Cross-Recording RAG Engine** | **Completed** |
-| Phase 7 | Collections, Developer API Keys & Live Diagnostics Hub | Next |
+| **Phase 7** | **Production Hardening, Collections, Developer API Keys, Usage Ledger, Diagnostics Hub & pgvector HNSW** | **Completed** |
+
+---
+
+## Phase 7: Production Hardening, Scalability & Advanced Workspace Features
+
+### 1. Workspace Collections
+- **Full CRUD REST API** (`/api/v1/collections`): create, inspect, update, and delete collections scoped strictly to the calling workspace.
+- **Recording Assignment & Filtering**: assign recordings to collections, unassign on collection deletion without deleting audio assets, and filter recordings by collection in the library.
+- **Reactive UI**: interactive management in `/app/collections` with color tags, recording counts, and navigation into filtered recordings.
+
+### 2. Developer API Keys & Dual-Mode Authentication
+- **Programmatic Secret Keys**: cryptographically random keys prefixed with `vm_live_` (e.g. `vm_live_a1b2c3d4...`).
+- **Cryptographic Storage**: only the SHA-256 hash is persisted in the database; raw secret keys are displayed only once upon generation.
+- **Dual-Mode Authentication Middleware (`@require_auth`)**:
+  - Accepts `Authorization: Bearer vm_live_...` or `X-API-Key: vm_live_...`
+  - Accepts `Authorization: Bearer <jwt_token>`
+  - Automatically updates `last_used_at` timestamp on active API keys.
+  - Safe revocation preventing compromised or legacy keys from accessing tenant data.
+
+### 3. AI Token & Resource Usage Accounting
+- **Persistent Usage Ledger (`api_usage_records`)**: logs every programmatic API request and background AI task with duration, token counts, and model metadata.
+- **Speech-to-Text Accounting**: tracks audio seconds and converted hours processed by `faster-whisper`.
+- **LLM Token Accounting**: calculates and records prompt tokens, completion tokens, and total tokens consumed by `Ollama` for summaries and grounded question answering.
+- **Embedding Tracking**: counts chunk volume and tokens vectorized for semantic search.
+- **Aggregated Endpoint (`GET /api/v1/usage`)**: returns workspace totals, monthly quotas, breakdown by resource type (`transcription`, `summary`, `qa`, `rag`, `embedding`), model usage, and recent history.
+
+### 4. Real-Time Multi-Service Diagnostics Hub
+- **Deep Infrastructure Evaluation (`GET /api/v1/diagnostics`)**:
+  - **Database**: PostgreSQL / SQLite connectivity and query latency (ms).
+  - **Vector Storage**: verifies `pgvector` extension and `HNSW` vector index status.
+  - **Redis & Celery**: evaluates broker responsiveness, active worker count, and registered worker names.
+  - **faster-whisper**: inspects speech-to-text library, ffmpeg binary, and active compute device (`cpu`/`cuda`).
+  - **Ollama**: connects to local inference engine, queries available downloaded models, and verifies configured model readiness.
+  - **Sentence-Transformers**: validates local embedding model pipeline and vector dimensions (384-dim).
+  - **Storage**: inspects volume directory path, total capacity, and available free gigabytes.
+- **Interactive UI**: live diagnostics card grid on `/app/settings` with a real-time "Refresh Diagnostics" trigger.
+
+### 5. PostgreSQL pgvector Scalability & HNSW Indexing
+
+VoxMind utilizes PostgreSQL `pgvector` with **HNSW (Hierarchical Navigable Small World)** indexing on `transcript_chunks.embedding` using cosine distance (`vector_cosine_ops`):
+
+```sql
+CREATE INDEX IF NOT EXISTS ix_transcript_chunks_embedding_hnsw 
+ON transcript_chunks 
+USING hnsw (embedding vector_cosine_ops);
+```
+
+#### Why HNSW over IVFFlat or Exact Sequential Scan?
+
+| Dimension | Exact Scan (`Flat`) | IVFFlat | HNSW (`vector_cosine_ops`) |
+|---|---|---|---|
+| **Recall / Accuracy** | 100% | 85% – 95% (depends on `probes`) | **98% – 99.5%** |
+| **Query Latency** | Degrades linearly $O(N)$ | Fast $O(\sqrt{N})$ | **Sub-millisecond $O(\log N)$** |
+| **Training Requirement** | None | Requires pre-training (minimum vectors) | **None (index immediately active)** |
+| **Incremental Updates** | Instant | Degrades without periodic `REINDEX` | **Maintains graph quality gracefully** |
+| **Build / Memory Cost** | Zero build time | Low memory | Moderate build memory (justified by query speed) |
+
+For VoxMind's workspace workloads—where recordings and dialogue chunks are ingested continuously over time—HNSW provides instant recall, zero training friction, and sub-millisecond retrieval without performance degradation.

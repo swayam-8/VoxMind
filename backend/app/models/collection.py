@@ -29,3 +29,9 @@ class Collection(BaseModel):
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="collections")
     recordings: Mapped[List["Recording"]] = relationship("Recording", back_populates="collection")
+
+    def to_dict(self) -> dict:
+        """Convert collection to dictionary, including computed recording count."""
+        data = super().to_dict()
+        data["recording_count"] = len(self.recordings) if self.recordings else 0
+        return data

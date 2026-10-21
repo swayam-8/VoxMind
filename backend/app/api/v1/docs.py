@@ -363,6 +363,69 @@ OPENAPI_SPEC = {
                 },
             },
         },
+        "/collections": {
+            "get": {
+                "summary": "List collections in current workspace",
+                "responses": {"200": {"description": "Workspace collections"}},
+            },
+            "post": {
+                "summary": "Create a new workspace collection",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "description": {"type": "string"},
+                                    "color": {"type": "string"},
+                                },
+                            }
+                        }
+                    },
+                },
+                "responses": {"201": {"description": "Collection created"}},
+            },
+        },
+        "/api-keys": {
+            "get": {
+                "summary": "List developer API keys",
+                "responses": {"200": {"description": "API keys list"}},
+            },
+            "post": {
+                "summary": "Generate a new scoped developer API key",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "expires_days": {"type": "integer"},
+                                },
+                            }
+                        }
+                    },
+                },
+                "responses": {"201": {"description": "API key generated"}},
+            },
+        },
+        "/usage": {
+            "get": {
+                "summary": "Get workspace AI token and operational resource metrics",
+                "responses": {"200": {"description": "Usage summary"}},
+            },
+        },
+        "/diagnostics": {
+            "get": {
+                "summary": "Deep multi-service infrastructure diagnostics",
+                "responses": {"200": {"description": "Diagnostics result"}},
+            },
+        },
     },
 }
 

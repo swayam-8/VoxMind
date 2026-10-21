@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   KeyRound,
   Plus,
@@ -6,8 +6,10 @@ import {
   Trash2,
   Code2,
   Activity,
-  CheckCircle2,
   AlertTriangle,
+  Loader2,
+  Zap,
+  Mic,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,40 +24,89 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "@/hooks/use-toast"
-import { DEMO_API_KEYS, type DemoApiKey } from "@/lib/demo-data"
+import { apiClient, type ApiApiKey, type ApiUsageSummary } from "@/lib/api-client"
 
 export function IntegrationsPage() {
-  const [keys, setKeys] = useState<DemoApiKey[]>(DEMO_API_KEYS)
+  const [keys, setKeys] = useState<ApiApiKey[]>([])
+  const [usage, setUsage] = useState<ApiUsageSummary | null>(null)
+  const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [newKeyName, setNewKeyName] = useState("")
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
 
-  const handleGenerateKey = (e: React.FormEvent) => {
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [keysRes, usageRes] = await Promise.allSettled([
+        apiClient.getApiKeys(),
+        apiClient.getUsage(),
+      ])
+
+      if (keysRes.status === "fulfilled" && keysRes.value.data) {
+        setKeys(keysRes.value.data)
+      }
+      if (usageRes.status === "fulfilled" && usageRes.value.data) {
+        setUsage(usageRes.value.data)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleGenerateKey = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newKeyName.trim()) return
 
-    const randomSecret = `vm_live_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`
-    const newEntry: DemoApiKey = {
-      id: `key-${Date.now()}`,
-      name: newKeyName,
-      prefix: `${randomSecret.substring(0, 12)}...`,
-      createdAt: new Date().toISOString(),
-      lastUsedAt: "Just now",
-      status: "active",
-    }
+    try {
+      setIsSubmitting(true)
+      const res = await apiClient.createApiKey({ name: newKeyName.trim() })
+      const createdKey = res.data
 
-    setKeys((prev) => [newEntry, ...prev])
-    setGeneratedKey(randomSecret)
-    setNewKeyName("")
+      setKeys((prev) => [createdKey, ...prev])
+      setGeneratedKey(createdKey.raw_key || null)
+      setNewKeyName("")
+
+      toast({
+        title: "API Key Created",
+        description: `"${createdKey.name}" is now ready to authorize programmatic requests.`,
+        variant: "success",
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to generate API key"
+      toast({
+        title: "Generation Failed",
+        description: msg,
+        variant: "danger",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleRevoke = (id: string, name: string) => {
-    setKeys((prev) => prev.filter((k) => k.id !== id))
-    toast({
-      title: "API Key Revoked",
-      description: `Key "${name}" has been invalidated.`,
-      variant: "danger",
-    })
+  const handleRevoke = async (id: string, name: string) => {
+    try {
+      await apiClient.revokeApiKey(id)
+      setKeys((prev) =>
+        prev.map((k) => (k.id === id ? { ...k, is_revoked: true } : k))
+      )
+      toast({
+        title: "API Key Revoked",
+        description: `Key "${name}" has been permanently invalidated.`,
+        variant: "danger",
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to revoke key"
+      toast({
+        title: "Revoke Failed",
+        description: msg,
+        variant: "danger",
+      })
+    }
   }
 
   const copyCode = (text: string) => {
@@ -70,8 +121,7 @@ export function IntegrationsPage() {
   const CURL_EXAMPLE = `curl -X POST "http://localhost:5000/api/v1/recordings" \\
   -H "Authorization: Bearer vm_live_9a4f..." \\
   -F "file=@meeting_audio.mp3" \\
-  -F "title=Q4 Architecture Sync" \\
-  -F "collection_id=col-1"`
+  -F "title=Q4 Architecture Sync"`
 
   const PYTHON_EXAMPLE = `import requests
 
@@ -90,8 +140,10 @@ const formData = new FormData();
 formData.append("file", audioBlob, "sync.wav");
 formData.append("title", "Engineering Standup");
 
-const result = await apiClient.post("/recordings", formData);
+const result = await apiClient.uploadRecording(formData);
 console.log("Job status:", result.data.status);`
+
+  const activeKeys = keys.filter((k) => !k.is_revoked)
 
   return (
     <div className="space-y-8">
@@ -107,7 +159,7 @@ console.log("Job status:", result.data.status);`
             </Badge>
           </div>
           <p className="mt-1 text-xs text-text-secondary">
-            Manage programmatic API access keys, review request examples, and monitor quota limits.
+            Manage programmatic API access keys, review request examples, and monitor AI quota limits.
           </p>
         </div>
 
@@ -125,102 +177,128 @@ console.log("Job status:", result.data.status);`
         </Button>
       </div>
 
+      {/* API Usage & Quotas (Live Metrics) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-text-muted">
+            <span>Requests Recorded</span>
+            <Activity className="w-4 h-4 text-accent" />
+          </div>
+          <div className="text-xl font-bold text-text-primary font-mono">
+            {usage?.total_requests.toLocaleString() ?? 0} /{" "}
+            {(usage?.quota.requests_limit ?? 100000).toLocaleString()}
+          </div>
+          <div className="text-[11px] text-text-secondary">
+            {usage
+              ? `${((usage.total_requests / usage.quota.requests_limit) * 100).toFixed(1)}% quota consumed`
+              : "Standard Workspace Quota"}
+          </div>
+        </div>
+
+        <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-text-muted">
+            <span>Audio Processed</span>
+            <Mic className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div className="text-xl font-bold text-text-primary font-mono">
+            {usage?.total_audio_hours ?? 0} hrs / {usage?.quota.audio_hours_limit ?? 50} hrs
+          </div>
+          <div className="text-[11px] text-text-secondary">
+            Local faster-whisper transcription
+          </div>
+        </div>
+
+        <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-text-muted">
+            <span>AI LLM Tokens</span>
+            <Zap className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-xl font-bold text-text-primary font-mono">
+            {(usage?.total_tokens ?? 0).toLocaleString()} tokens
+          </div>
+          <div className="text-[11px] text-text-secondary">
+            Ollama summarization & RAG
+          </div>
+        </div>
+      </div>
+
       {/* API Key Management Table */}
       <div className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div>
             <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
               <KeyRound className="h-4 w-4 text-accent" />
-              Active API Keys
+              Developer API Keys
             </h3>
             <p className="text-xs text-text-muted mt-0.5">
-              Secret keys grant full access to your authorized workspace audio endpoints.
+              Secret keys grant full programmatic access to your authorized workspace voice endpoints.
             </p>
           </div>
           <Badge variant="outline" className="text-xs">
-            {keys.length} of 10 keys
+            {activeKeys.length} active key(s)
           </Badge>
         </div>
 
-        <div className="space-y-2">
-          {keys.map((key) => (
-            <div
-              key={key.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-surface-2/60 border border-border gap-3"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-text-primary">
-                    {key.name}
-                  </span>
-                  <Badge variant="success" className="text-[10px]">
-                    {key.status}
-                  </Badge>
+        {loading ? (
+          <div className="py-8 flex items-center justify-center text-text-muted text-xs">
+            <Loader2 className="w-4 h-4 mr-2 animate-spin text-accent" />
+            Loading developer keys...
+          </div>
+        ) : keys.length === 0 ? (
+          <div className="text-center py-8 text-xs text-text-muted">
+            No API keys generated yet. Click "Generate API Key" to create a programmatic access token.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {keys.map((key) => (
+              <div
+                key={key.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-surface-2/60 border border-border gap-3"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-text-primary">
+                      {key.name}
+                    </span>
+                    <Badge
+                      variant={key.is_revoked ? "outline" : "success"}
+                      className="text-[10px]"
+                    >
+                      {key.is_revoked ? "revoked" : "active"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-text-muted font-mono">
+                    <span className="bg-surface-1 px-2 py-0.5 rounded border border-border">
+                      {key.key_prefix}
+                    </span>
+                    <span>Created {new Date(key.created_at).toLocaleDateString()}</span>
+                    <span>
+                      • Last used:{" "}
+                      {key.last_used_at
+                        ? new Date(key.last_used_at).toLocaleDateString()
+                        : "Never"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-text-muted font-mono">
-                  <span className="bg-surface-1 px-2 py-0.5 rounded border border-border">
-                    {key.prefix}
-                  </span>
-                  <span>Created {new Date(key.createdAt).toLocaleDateString()}</span>
-                  <span>• Last used: {key.lastUsedAt || "Never"}</span>
+
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                  {!key.is_revoked ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRevoke(key.id, key.name)}
+                      className="h-8 text-xs text-danger hover:bg-danger-subtle hover:border-danger/30"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Revoke
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-text-muted italic">Revoked</span>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRevoke(key.id, key.name)}
-                  className="h-8 text-xs text-danger hover:bg-danger-subtle hover:border-danger/30"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Revoke
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* API Usage & Quotas */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-text-muted">
-            <span>Requests (Current Month)</span>
-            <Activity className="w-4 h-4 text-accent" />
+            ))}
           </div>
-          <div className="text-xl font-bold text-text-primary font-mono">
-            14,280 / 100,000
-          </div>
-          <div className="text-[11px] text-text-secondary">
-            14.2% quota consumed
-          </div>
-        </div>
-
-        <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-text-muted">
-            <span>Rate Limit</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-xl font-bold text-text-primary font-mono">
-            60 req / min
-          </div>
-          <div className="text-[11px] text-text-secondary">
-            Standard Local Ingestion Tier
-          </div>
-        </div>
-
-        <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-text-muted">
-            <span>Webhooks</span>
-            <Badge variant="outline" className="text-[10px]">Phase 6</Badge>
-          </div>
-          <div className="text-xl font-bold text-text-primary">
-            0 Configured
-          </div>
-          <div className="text-[11px] text-text-muted">
-            Scheduled for Phase 6 release
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Code Integration Examples */}
@@ -301,8 +379,8 @@ console.log("Job status:", result.data.status);`
             </DialogTitle>
             <DialogDescription>
               {generatedKey
-                ? "This key is displayed once only. Store it securely in your secret manager."
-                : "Enter a descriptive label for where this key will be utilized."}
+                ? "This key is displayed once only. Store it securely in your environment variables or secret manager."
+                : "Enter a descriptive label for where this programmatic key will be utilized."}
             </DialogDescription>
           </DialogHeader>
 
@@ -358,15 +436,23 @@ console.log("Job status:", result.data.status);`
                   type="button"
                   variant="ghost"
                   onClick={() => setCreateDialogOpen(false)}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="default"
-                  disabled={!newKeyName.trim()}
+                  disabled={!newKeyName.trim() || isSubmitting}
                 >
-                  Generate Key
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Key"
+                  )}
                 </Button>
               </DialogFooter>
             </form>

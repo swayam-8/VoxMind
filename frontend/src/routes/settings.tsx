@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   User,
   Sun,
@@ -10,6 +10,14 @@ import {
   CheckCircle2,
   Activity,
   Key,
+  RefreshCw,
+  Server,
+  Database,
+  Layers,
+  HardDrive,
+  AlertCircle,
+  HelpCircle,
+  Radio,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +31,7 @@ import {
 } from "@/components/ui/select"
 import { useTheme, type Theme } from "@/contexts/theme-context"
 import { toast } from "@/hooks/use-toast"
+import { apiClient, type ApiDiagnostics } from "@/lib/api-client"
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -36,11 +45,45 @@ export function SettingsPage() {
   const [ollamaModel, setOllamaModel] = useState("llama3.2")
   const [whisperModel, setWhisperModel] = useState("base")
   const [whisperDevice, setWhisperDevice] = useState("cpu")
-  const [isTestingAi, setIsTestingAi] = useState(false)
 
   // Security Form
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
+
+  // Diagnostics Hub State
+  const [diagnostics, setDiagnostics] = useState<ApiDiagnostics | null>(null)
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false)
+
+  useEffect(() => {
+    let ignore = false
+    const init = async () => {
+      try {
+        setDiagnosticsLoading(true)
+        const res = await apiClient.getDiagnostics()
+        if (!ignore) setDiagnostics(res.data)
+      } catch {
+        if (!ignore) setDiagnostics(null)
+      } finally {
+        if (!ignore) setDiagnosticsLoading(false)
+      }
+    }
+    void init()
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const handleRefreshDiagnostics = async () => {
+    try {
+      setDiagnosticsLoading(true)
+      const res = await apiClient.getDiagnostics()
+      setDiagnostics(res.data)
+    } catch {
+      setDiagnostics(null)
+    } finally {
+      setDiagnosticsLoading(false)
+    }
+  }
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,18 +92,6 @@ export function SettingsPage() {
       description: "User details and preferences updated.",
       variant: "success",
     })
-  }
-
-  const handleTestAi = () => {
-    setIsTestingAi(true)
-    setTimeout(() => {
-      setIsTestingAi(false)
-      toast({
-        title: "AI Service Evaluated",
-        description: `Local endpoint ${ollamaUrl} is active. faster-whisper:${whisperModel} ready.`,
-        variant: "success",
-      })
-    }, 1000)
   }
 
   const handleSaveAi = (e: React.FormEvent) => {
@@ -84,19 +115,170 @@ export function SettingsPage() {
     })
   }
 
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case "healthy":
+        return (
+          <Badge variant="success" className="text-[10px] flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Healthy
+          </Badge>
+        )
+      case "degraded":
+        return (
+          <Badge variant="warning" className="text-[10px] flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> Degraded
+          </Badge>
+        )
+      case "unreachable":
+      case "unhealthy":
+        return (
+          <Badge variant="danger" className="text-[10px] flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> Unreachable
+          </Badge>
+        )
+      default:
+        return (
+          <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+            <HelpCircle className="w-3 h-3" /> Offline
+          </Badge>
+        )
+    }
+  }
+
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div className="border-b border-border pb-5">
         <h1 className="text-xl font-bold tracking-tight text-text-primary">
-          Workspace Settings
+          Workspace Settings & System Diagnostics
         </h1>
         <p className="mt-1 text-xs text-text-secondary">
-          Configure profile details, interface themes, local AI endpoints, and security preferences.
+          Configure profile details, interface themes, local AI endpoints, and monitor real-time infrastructure health.
         </p>
       </div>
 
-      {/* 1. Profile & Preferences */}
+      {/* 1. Live System Diagnostics Hub */}
+      <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/50 pb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-accent" />
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary">
+                Live Diagnostics Hub
+              </h2>
+              <p className="text-[11px] text-text-muted">
+                Real-time connectivity and status across local AI runtimes and database engines.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {diagnostics && getStatusBadge(diagnostics.status)}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshDiagnostics}
+              disabled={diagnosticsLoading}
+              className="h-8 text-xs"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 mr-1 ${diagnosticsLoading ? "animate-spin" : ""}`}
+              />
+              Refresh Diagnostics
+            </Button>
+          </div>
+        </div>
+
+        {diagnostics ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            {/* Database */}
+            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-accent" /> Primary Database
+                </span>
+                {getStatusBadge(diagnostics.services.database?.status)}
+              </div>
+              <p className="text-[11px] text-text-secondary font-mono">
+                Latency: {diagnostics.services.database?.latency_ms ?? 0} ms • {diagnostics.services.database?.message}
+              </p>
+            </div>
+
+            {/* Vector Storage & HNSW */}
+            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-emerald-500" /> pgvector & HNSW
+                </span>
+                {getStatusBadge(diagnostics.services.vector_storage?.status)}
+              </div>
+              <p className="text-[11px] text-text-secondary font-mono">
+                {diagnostics.services.vector_storage?.message}
+              </p>
+            </div>
+
+            {/* Redis & Celery */}
+            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-blue-500" /> Celery Background Worker
+                </span>
+                {getStatusBadge(diagnostics.services.celery?.status)}
+              </div>
+              <p className="text-[11px] text-text-secondary font-mono">
+                {diagnostics.services.celery?.message}
+              </p>
+            </div>
+
+            {/* faster-whisper */}
+            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-violet-400" /> Speech-to-Text Engine
+                </span>
+                {getStatusBadge(diagnostics.services.whisper?.status)}
+              </div>
+              <p className="text-[11px] text-text-secondary font-mono">
+                {diagnostics.services.whisper?.message}
+              </p>
+            </div>
+
+            {/* Ollama LLM */}
+            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-amber-500" /> Ollama Local LLM
+                </span>
+                {getStatusBadge(diagnostics.services.ollama?.status)}
+              </div>
+              <p className="text-[11px] text-text-secondary font-mono">
+                {diagnostics.services.ollama?.message}
+              </p>
+            </div>
+
+            {/* Local Storage */}
+            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                  <HardDrive className="w-3.5 h-3.5 text-text-secondary" /> Volume Storage
+                </span>
+                {getStatusBadge(diagnostics.services.storage?.status)}
+              </div>
+              <p className="text-[11px] text-text-secondary font-mono">
+                {diagnostics.services.storage?.free_gb
+                  ? `${diagnostics.services.storage.free_gb} GB free / ${diagnostics.services.storage.total_gb} GB total`
+                  : diagnostics.services.storage?.path}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-lg bg-surface-2 text-xs text-text-muted flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-warning" />
+            <span>Diagnostics telemetry unreachable or backend starting up.</span>
+          </div>
+        )}
+      </section>
+
+      {/* 2. Profile & Preferences */}
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
@@ -143,7 +325,7 @@ export function SettingsPage() {
         </form>
       </section>
 
-      {/* 2. Appearance & Theme Controls */}
+      {/* 3. Appearance & Theme Controls */}
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="border-b border-border/50 pb-3">
           <h2 className="text-sm font-semibold text-text-primary">
@@ -214,7 +396,7 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* 3. Local AI Engine Configuration */}
+      {/* 4. Local AI Engine Configuration */}
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
@@ -286,18 +468,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleTestAi}
-              isLoading={isTestingAi}
-            >
-              <Activity className="w-3.5 h-3.5 mr-1 text-accent" />
-              Test Engine Connectivity
-            </Button>
-
+          <div className="flex items-center justify-end pt-2">
             <Button type="submit" variant="default" size="sm">
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Apply AI Settings
@@ -306,7 +477,7 @@ export function SettingsPage() {
         </form>
       </section>
 
-      {/* 4. Security & Tenant Credentials */}
+      {/* 5. Security & Tenant Credentials */}
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">

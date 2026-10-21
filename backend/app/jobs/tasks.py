@@ -15,6 +15,7 @@ from app.services.transcription_service import TranscriptionService, Transcripti
 from app.services.ollama_service import OllamaService, OllamaServiceError, OllamaValidationError
 from app.services.chunking_service import ChunkingService
 from app.services.embedding_service import EmbeddingService
+from app.services.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,20 @@ def transcribe_recording_task(self, recording_id: str, job_id: str) -> dict:
         job.status = "completed"
         job.completed_at = datetime.now(timezone.utc)
         job.error_message = None
+
+        # Record audio processing usage
+        try:
+            UsageService.record_usage(
+                workspace_id=recording.workspace_id,
+                endpoint="/api/v1/jobs/transcribe",
+                method="BACKGROUND",
+                status_code=200,
+                resource_type="transcription",
+                model_name=job.model_name or "faster-whisper",
+                duration_seconds=final_duration,
+            )
+        except Exception as usage_err:
+            logger.warning("Could not record transcription usage: %s", usage_err)
 
         # 6. Initialize summary record for Phase 5 AI Intelligence
         model_name = (
@@ -343,6 +358,25 @@ def analyze_recording_task(
         summary.error_message = None
 
         db.session.commit()
+
+        # Record LLM summarization token usage
+        try:
+            prompt_toks = max(10, len(transcript_text) // 4)
+            comp_toks = max(10, len(summary.summary_markdown) // 4)
+            UsageService.record_usage(
+                workspace_id=recording.workspace_id,
+                endpoint="/api/v1/recordings/analysis",
+                method="BACKGROUND",
+                status_code=200,
+                resource_type="summary",
+                model_name=summary.model_name,
+                prompt_tokens=prompt_toks,
+                completion_tokens=comp_toks,
+                total_tokens=prompt_toks + comp_toks,
+            )
+        except Exception as usage_err:
+            logger.warning("Could not record summary usage: %s", usage_err)
+
         logger.info(
             "AI analysis completed for recording %s: %d takeaways, %d decisions, %d action items",
             recording_id,
@@ -489,6 +523,22 @@ def index_recording_chunks_task(self, recording_id: str) -> dict:
         recording.indexed_at = datetime.now(timezone.utc)
         recording.index_error = None
         db.session.commit()
+
+        # Record embedding chunk token usage
+        try:
+            total_chunk_words = sum(len(c["text"].split()) for c in chunk_dicts)
+            UsageService.record_usage(
+                workspace_id=recording.workspace_id,
+                endpoint="/api/v1/recordings/index",
+                method="BACKGROUND",
+                status_code=200,
+                resource_type="embedding",
+                model_name=model_name,
+                prompt_tokens=int(total_chunk_words * 1.3),
+                total_tokens=int(total_chunk_words * 1.3),
+            )
+        except Exception as usage_err:
+            logger.warning("Could not record embedding usage: %s", usage_err)
 
         logger.info(
             "Successfully indexed %d passages for recording %s",

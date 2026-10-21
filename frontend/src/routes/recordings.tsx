@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Mic,
@@ -57,6 +57,9 @@ function formatDate(iso: string): string {
 
 export function RecordingsPage() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const collectionFilter = searchParams.get("collection_id") || "all"
+
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [sortBy, setSortBy] = useState("created_at")
@@ -64,6 +67,13 @@ export function RecordingsPage() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [uploadOpen, setUploadOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ApiRecording | null>(null)
+
+  // Query workspace collections for filtering
+  const { data: collectionsRes } = useQuery({
+    queryKey: ["collections"],
+    queryFn: () => apiClient.getCollections(),
+  })
+  const collections = collectionsRes?.data || []
 
   // Real backend query via TanStack Query with live polling during processing
   const {
@@ -73,11 +83,15 @@ export function RecordingsPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["recordings", { search, status: statusFilter, sort_by: sortBy, order }],
+    queryKey: [
+      "recordings",
+      { search, status: statusFilter, collection_id: collectionFilter, sort_by: sortBy, order },
+    ],
     queryFn: () =>
       apiClient.getRecordings({
         search,
         status: statusFilter,
+        collection_id: collectionFilter,
         sort_by: sortBy,
         order,
       }),
@@ -193,6 +207,35 @@ export function RecordingsPage() {
                 <SelectItem value="transcribing">Transcribing</SelectItem>
                 <SelectItem value="queued">Queued</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Collection Filter */}
+          <div className="w-40">
+            <Select
+              value={collectionFilter}
+              onValueChange={(val) => {
+                const next = new URLSearchParams(searchParams)
+                if (val === "all") {
+                  next.delete("collection_id")
+                } else {
+                  next.set("collection_id", val)
+                }
+                setSearchParams(next)
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <FolderOpen className="w-3 h-3 mr-1 text-text-muted" />
+                <SelectValue placeholder="Collection" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Collections</SelectItem>
+                {collections.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
