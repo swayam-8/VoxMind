@@ -8,11 +8,13 @@ from celery import shared_task
 from flask import current_app
 from app.extensions import db
 from app.models.recording import Recording, TranscriptionJob
-from app.models.transcript import TranscriptSegment
+from app.models.transcript import TranscriptSegment, TranscriptChunk
 from app.models.insight import Summary, ActionItem
 from app.services.audio_service import AudioService, AudioValidationError
 from app.services.transcription_service import TranscriptionService, TranscriptionServiceError
 from app.services.ollama_service import OllamaService, OllamaServiceError, OllamaValidationError
+from app.services.chunking_service import ChunkingService
+from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,15 @@ def transcribe_recording_task(self, recording_id: str, job_id: str) -> dict:
             logger.warning(
                 "Celery AI analysis dispatch postponed or failed: %s (summary remains pending)",
                 ai_dispatch_err,
+            )
+
+        # 8. Dispatch semantic indexing task
+        try:
+            index_recording_chunks_task.delay(str(recording.id))
+        except Exception as idx_dispatch_err:
+            logger.warning(
+                "Celery indexing dispatch postponed: %s (recording remains pending index)",
+                idx_dispatch_err,
             )
 
         return {
@@ -374,6 +385,156 @@ def analyze_recording_task(
 
         _mark_analysis_failure(summary.id, err_msg)
         return {"success": False, "error": err_msg}
+
+
+@shared_task(
+    bind=True,
+    name="indexing.index_recording_chunks",
+    max_retries=2,
+    acks_late=True,
+)
+def index_recording_chunks_task(self, recording_id: str) -> dict:
+    """Execute asynchronous transcript chunking and vector indexing.
+
+    Generates dense embeddings for coherent transcript passages and persists them
+    into PostgreSQL pgvector (or fallback). Indexing failures are completely isolated
+    and never corrupt or invalidate completed transcripts or summaries.
+    """
+    logger.info(
+        "Celery worker received vector indexing task [recording_id=%s, task_id=%s]",
+        recording_id,
+        self.request.id,
+    )
+
+    try:
+        rec_uuid = uuid.UUID(recording_id)
+    except (ValueError, TypeError) as exc:
+        logger.error("Invalid UUID passed to indexing task: %s", exc)
+        return {"success": False, "error": "Invalid identifier"}
+
+    recording = db.session.query(Recording).filter_by(id=rec_uuid).first()
+    if not recording:
+        logger.error("Recording %s not found for indexing", recording_id)
+        return {"success": False, "error": "Recording not found"}
+
+    # Update state to indexing
+    recording.index_status = "indexing"
+    recording.index_error = None
+    db.session.commit()
+
+    try:
+        segments = recording.segments
+        if not segments:
+            logger.info("Recording %s has no transcript segments to index", recording_id)
+            recording.index_status = "completed"
+            recording.indexed_at = datetime.now(timezone.utc)
+            recording.index_error = None
+            db.session.commit()
+            return {"success": True, "recording_id": recording_id, "chunks_count": 0}
+
+        # 1. Deterministic chunking
+        target_words = (
+            current_app.config.get("CHUNK_TARGET_WORDS", 180)
+            if current_app
+            else 180
+        )
+        overlap_words = (
+            current_app.config.get("CHUNK_OVERLAP_WORDS", 35)
+            if current_app
+            else 35
+        )
+        chunk_dicts = ChunkingService.chunk_segments(
+            segments,
+            target_words=target_words,
+            overlap_words=overlap_words,
+        )
+
+        if not chunk_dicts:
+            recording.index_status = "completed"
+            recording.indexed_at = datetime.now(timezone.utc)
+            db.session.commit()
+            return {"success": True, "recording_id": recording_id, "chunks_count": 0}
+
+        # 2. Extract passage texts for batch embedding
+        texts = [c["text"] for c in chunk_dicts]
+        model_name = (
+            current_app.config.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+            if current_app
+            else "all-MiniLM-L6-v2"
+        )
+        vectors = EmbeddingService.embed_texts(texts)
+
+        # 3. Transactional update: clear stale chunks for this recording & insert new ones
+        db.session.query(TranscriptChunk).filter_by(recording_id=recording.id).delete()
+
+        for idx, chunk_data in enumerate(chunk_dicts):
+            chunk = TranscriptChunk(
+                id=uuid.uuid4(),
+                recording_id=recording.id,
+                workspace_id=recording.workspace_id,
+                user_id=recording.user_id,
+                chunk_index=chunk_data["chunk_index"],
+                start_time=chunk_data["start_time"],
+                end_time=chunk_data["end_time"],
+                speaker=chunk_data["speaker"],
+                text=chunk_data["text"],
+                source_segment_ids=chunk_data["source_segment_ids"],
+                content_hash=chunk_data["content_hash"],
+                embedding_model=model_name,
+                embedding=vectors[idx],
+            )
+            db.session.add(chunk)
+
+        recording.index_status = "completed"
+        recording.indexed_at = datetime.now(timezone.utc)
+        recording.index_error = None
+        db.session.commit()
+
+        logger.info(
+            "Successfully indexed %d passages for recording %s",
+            len(chunk_dicts),
+            recording_id,
+        )
+        return {
+            "success": True,
+            "recording_id": recording_id,
+            "chunks_count": len(chunk_dicts),
+        }
+
+    except Exception as exc:
+        db.session.rollback()
+        err_msg = f"Vector indexing failed: {str(exc)}"
+        logger.exception(
+            "Error during vector indexing task for recording %s: %s",
+            recording_id,
+            exc,
+        )
+
+        is_eager = getattr(self.app.conf, "task_always_eager", False)
+        if not is_eager and self.request.retries < self.max_retries:
+            countdown = 5 * (2 ** self.request.retries)
+            logger.warning(
+                "Retrying indexing for recording %s in %ds...",
+                recording_id,
+                countdown,
+            )
+            raise self.retry(exc=exc, countdown=countdown)
+
+        _mark_indexing_failure(recording.id, err_msg)
+        return {"success": False, "error": err_msg}
+
+
+def _mark_indexing_failure(recording_id: uuid.UUID, error_message: str):
+    """Record failure status for vector indexing without corrupting transcript data."""
+    try:
+        rec = db.session.query(Recording).filter_by(id=recording_id).first()
+        if rec:
+            rec.index_status = "failed"
+            rec.index_error = error_message
+            db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception("Failed to mark index failure for %s: %s", recording_id, exc)
 
 
 def _mark_transcription_failure(recording_id: uuid.UUID, job_id: uuid.UUID, error_message: str):

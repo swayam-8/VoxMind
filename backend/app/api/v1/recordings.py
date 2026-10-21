@@ -8,12 +8,16 @@ from werkzeug.utils import secure_filename
 from app.extensions import db
 from app.models.recording import Recording, TranscriptionJob
 from app.models.collection import Collection
-from app.models.transcript import TranscriptSegment
+from app.models.transcript import TranscriptSegment, TranscriptChunk
 from app.models.insight import Summary, ActionItem
 from app.services.workspace_service import WorkspaceService
 from app.services.audio_service import AudioService, AudioValidationError
 from app.services.ollama_service import OllamaService, OllamaServiceError
-from app.jobs.tasks import transcribe_recording_task, analyze_recording_task
+from app.jobs.tasks import (
+    transcribe_recording_task,
+    analyze_recording_task,
+    index_recording_chunks_task,
+)
 from app.utils.response import api_success, api_error
 
 recordings_bp = Blueprint("recordings", __name__, url_prefix="/recordings")
@@ -665,3 +669,72 @@ def toggle_action_item(recording_id: uuid.UUID, action_id: uuid.UUID):
 
     db.session.commit()
     return api_success(data=item.to_dict(), message="Action item updated")
+
+
+@recordings_bp.route("/<uuid:recording_id>/index-status", methods=["GET"])
+def get_recording_index_status(recording_id: uuid.UUID):
+    """Retrieve vector indexing readiness, status, and chunk count for a recording."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    chunk_count = (
+        db.session.query(TranscriptChunk)
+        .filter(TranscriptChunk.recording_id == recording.id)
+        .count()
+    )
+
+    return api_success(
+        data={
+            "recording_id": str(recording.id),
+            "index_status": recording.index_status,
+            "indexed_at": recording.indexed_at.isoformat() if recording.indexed_at else None,
+            "chunk_count": chunk_count,
+            "error_message": recording.index_error,
+        }
+    )
+
+
+@recordings_bp.route("/<uuid:recording_id>/reindex", methods=["POST"])
+def reindex_recording(recording_id: uuid.UUID):
+    """Trigger re-chunking and re-embedding of a recording's transcript."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    if not recording.segments and recording.status != "ready":
+        return api_error(
+            "Cannot index recording without completed transcript",
+            code="INVALID_STATE",
+            status_code=400,
+        )
+
+    recording.index_status = "indexing"
+    recording.index_error = None
+    db.session.commit()
+
+    try:
+        index_recording_chunks_task.delay(str(recording.id))
+    except Exception as exc:
+        current_app.logger.warning("Failed to enqueue indexing task: %s", exc)
+
+    return api_success(
+        data={
+            "recording_id": str(recording.id),
+            "index_status": "indexing",
+        },
+        message="Vector reindexing task enqueued successfully",
+        status_code=202,
+    )

@@ -7,6 +7,8 @@ from app import create_app
 from app.extensions import db
 from app.services.transcription_service import TranscriptionService
 from app.services.ollama_service import OllamaService
+from app.services.embedding_service import EmbeddingService
+from app.services.rag_service import RAGService
 
 
 def generate_wav_bytes(duration_seconds: float = 1.0, sample_rate: int = 16000) -> bytes:
@@ -145,3 +147,60 @@ def mock_ollama_global():
     yield
     OllamaService.clear_mock_generator()
     OllamaService.clear_mock_qa()
+
+
+@pytest.fixture(autouse=True)
+def mock_embedding_global():
+    """Mock sentence embeddings during all test runs for instant deterministic tests."""
+    def _mock_embed(texts):
+        # Return deterministic 384-dimensional vectors based on text hash
+        dim = 384
+        vectors = []
+        for t in texts:
+            val = float(abs(hash(t)) % 1000 + 1) / 1000.0
+            vec = [val] * dim
+            vectors.append(vec)
+        return vectors
+
+    EmbeddingService.set_mock_embedder(_mock_embed)
+    yield
+    EmbeddingService.set_mock_embedder(None)
+
+
+@pytest.fixture(autouse=True)
+def mock_rag_global():
+    """Mock RAG synthesis generator during automated tests."""
+    def _mock_rag(question, passages):
+        q_lower = question.lower()
+        if "insufficient" in q_lower or "unknown" in q_lower or not passages:
+            return {
+                "answer": (
+                    "I could not find sufficient evidence in your recordings "
+                    "to answer this question."
+                ),
+                "citations": [],
+                "sufficient_evidence": False,
+                "model_name": "llama3.2",
+            }
+        p = passages[0]
+        return {
+            "answer": "Based on [Passage 1], the answer is verified.",
+            "citations": [
+                {
+                    "recording_id": p["recording_id"],
+                    "recording_title": p["recording_title"],
+                    "chunk_id": p["chunk_id"],
+                    "start_time": p["start_time"],
+                    "end_time": p["end_time"],
+                    "speaker": p.get("speaker", "Speaker 1"),
+                    "quote": p["text"][:120],
+                    "score": p.get("score", 0.95),
+                }
+            ],
+            "sufficient_evidence": True,
+            "model_name": "llama3.2",
+        }
+
+    RAGService.set_mock_generator(_mock_rag)
+    yield
+    RAGService.set_mock_generator(None)

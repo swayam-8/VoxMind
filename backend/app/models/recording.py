@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from app.models.workspace import Workspace
     from app.models.user import User
     from app.models.collection import Collection
-    from app.models.transcript import TranscriptSegment
+    from app.models.transcript import TranscriptSegment, TranscriptChunk
     from app.models.insight import Summary, ActionItem
 
 
@@ -50,6 +50,15 @@ class Recording(BaseModel):
     status: Mapped[str] = mapped_column(sa.String(32), default="queued", index=True, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
 
+    # Semantic Vector Indexing Status: 'pending', 'indexing', 'completed', 'failed'
+    index_status: Mapped[str] = mapped_column(
+        sa.String(32), default="pending", index=True, nullable=False
+    )
+    indexed_at: Mapped[Optional[datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
+    index_error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="recordings")
     user: Mapped["User"] = relationship("User", back_populates="recordings")
@@ -66,6 +75,12 @@ class Recording(BaseModel):
         cascade="all, delete-orphan",
         order_by="TranscriptSegment.start_time",
     )
+    chunks: Mapped[List["TranscriptChunk"]] = relationship(
+        "TranscriptChunk",
+        back_populates="recording",
+        cascade="all, delete-orphan",
+        order_by="TranscriptChunk.chunk_index",
+    )
     summaries: Mapped[List["Summary"]] = relationship(
         "Summary", back_populates="recording", cascade="all, delete-orphan"
     )
@@ -74,9 +89,13 @@ class Recording(BaseModel):
     )
 
     def to_dict(self) -> dict:
-        """Serialize recording with collection details."""
+        """Serialize recording with collection details and indexing info."""
         data = super().to_dict()
         data["collection_name"] = self.collection.name if self.collection else None
+        data["index_status"] = self.index_status
+        data["indexed_at"] = self.indexed_at.isoformat() if self.indexed_at else None
+        data["index_error"] = self.index_error
+        data["chunk_count"] = len(self.chunks) if "chunks" in self.__dict__ else None
         return data
 
 

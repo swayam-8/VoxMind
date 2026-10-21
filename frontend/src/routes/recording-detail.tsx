@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, useSearchParams, Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
   Send,
   CheckCircle2,
   Target,
+  Database,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -103,6 +104,26 @@ export function RecordingDetailPage() {
     },
   })
 
+  // Reindex vectors mutation
+  const reindexMutation = useMutation({
+    mutationFn: () => (id ? apiClient.reindexRecording(id) : Promise.reject(new Error("No ID"))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recording", id] })
+      toast({
+        title: "Vector Re-indexing Enqueued",
+        description: "Passages are being chunked and embedded with sentence-transformers.",
+        variant: "success",
+      })
+    },
+    onError: (err) => {
+      toast({
+        title: "Reindex Failed",
+        description: err instanceof Error ? err.message : "Could not trigger re-indexing",
+        variant: "danger",
+      })
+    },
+  })
+
   // Toggle action item mutation
   const toggleActionMutation = useMutation({
     mutationFn: ({ actionId, completed }: { actionId: string; completed?: boolean }) =>
@@ -174,6 +195,18 @@ export function RecordingDetailPage() {
       duration: 1500,
     })
   }
+
+  const [searchParams] = useSearchParams()
+  useEffect(() => {
+    const t = searchParams.get("t")
+    if (t) {
+      const sec = parseFloat(t)
+      if (!isNaN(sec) && sec >= 0) {
+        const timer = setTimeout(() => handleSeek(sec), 50)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [searchParams])
 
   const copyTranscriptToClipboard = () => {
     if (!recording?.segments) return
@@ -280,6 +313,23 @@ export function RecordingDetailPage() {
               {recording.status === "failed" && (
                 <Badge variant="danger" className="text-[10px]">Failed</Badge>
               )}
+
+              {/* Vector Indexing Status */}
+              {recording.index_status === "completed" && (
+                <Badge variant="violet" className="text-[10px]">
+                  Vector Indexed
+                </Badge>
+              )}
+              {recording.index_status === "indexing" && (
+                <Badge variant="warning" className="text-[10px] animate-pulse">
+                  Indexing Chunks...
+                </Badge>
+              )}
+              {recording.index_status === "failed" && (
+                <Badge variant="danger" className="text-[10px]">
+                  Index Failed
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
               {recording.collection_name && (
@@ -303,7 +353,19 @@ export function RecordingDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => reindexMutation.mutate()}
+            disabled={reindexMutation.isPending || segments.length === 0}
+            className="text-xs"
+            title="Re-chunk transcript and re-generate pgvector embeddings"
+          >
+            <Database className="w-3.5 h-3.5 mr-1.5 text-accent" />
+            {reindexMutation.isPending ? "Indexing..." : "Re-index Vectors"}
+          </Button>
+
           <Button
             variant="outline"
             size="sm"

@@ -247,6 +247,105 @@ OPENAPI_SPEC = {
                 },
             },
         },
+        "/recordings/{id}/index-status": {
+            "get": {
+                "summary": "Retrieve vector indexing status and chunk count for a recording",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Indexing status, chunk count, and timestamps"},
+                    "404": {"description": "Recording not found"},
+                },
+            },
+        },
+        "/recordings/{id}/reindex": {
+            "post": {
+                "summary": "Trigger asynchronous re-chunking and re-embedding of a recording",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "202": {"description": "Vector indexing task enqueued"},
+                    "400": {"description": "Cannot index recording without completed transcript"},
+                    "404": {"description": "Recording not found"},
+                },
+            },
+        },
+        "/search": {
+            "post": {
+                "summary": "Semantic, keyword, or hybrid retrieval across authorized recordings",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["query"],
+                                "properties": {
+                                    "query": {"type": "string", "maxLength": 500},
+                                    "limit": {"type": "integer", "default": 10},
+                                    "recording_id": {"type": "string", "format": "uuid"},
+                                    "recording_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string", "format": "uuid"},
+                                    },
+                                    "mode": {
+                                        "type": "string",
+                                        "enum": ["hybrid", "semantic", "keyword"],
+                                        "default": "hybrid",
+                                    },
+                                    "min_score": {"type": "number"},
+                                },
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {"description": "Ranked passages with audio timestamps and metadata"},
+                    "400": {"description": "Invalid query or parameters"},
+                },
+            },
+        },
+        "/knowledge/ask": {
+            "post": {
+                "summary": "Cross-recording evidence-grounded QA with verified audio citations",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["question"],
+                                "properties": {
+                                    "question": {"type": "string", "maxLength": 1000},
+                                    "recording_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string", "format": "uuid"},
+                                    },
+                                    "max_passages": {"type": "integer", "default": 5},
+                                },
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {"description": "Synthesized answer with citation links and timestamps"},
+                    "400": {"description": "Invalid question"},
+                    "500": {"description": "Ollama inference or retrieval error"},
+                },
+            },
+        },
         "/jobs/{id}": {
             "get": {
                 "summary": "Retrieve transcription job execution metadata and status",

@@ -49,6 +49,9 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      - EMBEDDING_DIMENSION=384
+      - EMBEDDING_DEVICE=cpu
       - WHISPER_MODEL=${WHISPER_MODEL:-base}
       - WHISPER_DEVICE=cpu
     ports:
@@ -86,6 +89,9 @@ services:
       - WHISPER_COMPUTE_TYPE=int8
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      - EMBEDDING_DIMENSION=384
+      - EMBEDDING_DEVICE=cpu
     volumes:
       - storage_data:/app/storage
     depends_on:

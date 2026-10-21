@@ -198,7 +198,7 @@ npm run build --prefix frontend
 # Frontend lint check
 npm run lint --prefix frontend
 
-# Backend test suite (34 Pytest tests covering health, uploads, faster-whisper, and Ollama intelligence)
+# Backend test suite (44 Pytest tests covering health, uploads, faster-whisper, Ollama insights, and pgvector semantic retrieval)
 $env:PYTHONPATH="backend"; .\backend\.venv\Scripts\pytest backend\tests -v
 
 # Backend code hygiene (Flake8 linter)
@@ -211,7 +211,7 @@ $env:PYTHONPATH="backend"; .\backend\.venv\Scripts\pytest backend\tests -v
 # Spin up PostgreSQL (pgvector), Redis, Flask REST API, Celery Worker, and Frontend
 docker compose up -d --build
 
-# View worker logs (transcription & Ollama pipeline)
+# View worker logs (transcription, Ollama, & vector indexing pipeline)
 docker compose logs -f celery_worker
 ```
 
@@ -226,5 +226,5 @@ docker compose logs -f celery_worker
 | **Phase 3** | **Flask REST API, SQLAlchemy Models & Alembic Migrations** | **Completed** |
 | **Phase 4** | **Celery Background Queue + Local faster-whisper Transcription** | **Completed** |
 | **Phase 5** | **Ollama Local LLM Summarization, Action Items, Decisions & Grounded Q&A** | **Completed** |
-| Phase 6 | Vector Chunking, Semantic Search & Cross-Recording RAG Engine | Next |
-| Phase 7 | Collections, Developer API Keys & Live Diagnostics Hub | Pending |
+| **Phase 6** | **Vector Chunking, pgvector Semantic Search & Cross-Recording RAG Engine** | **Completed** |
+| Phase 7 | Collections, Developer API Keys & Live Diagnostics Hub | Next |

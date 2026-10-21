@@ -64,6 +64,22 @@ class BaseConfig:
     WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
     WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
 
+    # Local Embedding & Semantic Retrieval
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "384"))
+    EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
+    EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
+    EMBEDDING_MAX_SEQUENCE_LENGTH = int(os.getenv("EMBEDDING_MAX_SEQUENCE_LENGTH", "256"))
+    EMBEDDING_NORMALIZE = os.getenv("EMBEDDING_NORMALIZE", "true").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+    CHUNK_TARGET_WORDS = int(os.getenv("CHUNK_TARGET_WORDS", "180"))
+    CHUNK_OVERLAP_WORDS = int(os.getenv("CHUNK_OVERLAP_WORDS", "35"))
+    RETRIEVAL_TOP_K = int(os.getenv("RETRIEVAL_TOP_K", "10"))
+    RETRIEVAL_MIN_SCORE = float(os.getenv("RETRIEVAL_MIN_SCORE", "0.35"))
+
     # Storage Paths & Upload limits
     STORAGE_PATH = Path(os.getenv("STORAGE_PATH", str(BASE_DIR / "storage")))
     UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(BASE_DIR / "storage" / "uploads")))
