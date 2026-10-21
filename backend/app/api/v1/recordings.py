@@ -8,9 +8,12 @@ from werkzeug.utils import secure_filename
 from app.extensions import db
 from app.models.recording import Recording, TranscriptionJob
 from app.models.collection import Collection
+from app.models.transcript import TranscriptSegment
+from app.models.insight import Summary, ActionItem
 from app.services.workspace_service import WorkspaceService
 from app.services.audio_service import AudioService, AudioValidationError
-from app.jobs.tasks import transcribe_recording_task
+from app.services.ollama_service import OllamaService, OllamaServiceError
+from app.jobs.tasks import transcribe_recording_task, analyze_recording_task
 from app.utils.response import api_success, api_error
 
 recordings_bp = Blueprint("recordings", __name__, url_prefix="/recordings")
@@ -393,3 +396,272 @@ def delete_recording(recording_id: uuid.UUID):
         return api_error(
             f"Failed to delete recording: {str(exc)}", code="DELETE_ERROR", status_code=500
         )
+
+
+@recordings_bp.route("/<uuid:recording_id>/analysis", methods=["GET"])
+def get_recording_analysis(recording_id: uuid.UUID):
+    """Retrieve AI intelligence analysis (summary, takeaways, decisions, actions, topics)."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    summary = (
+        db.session.query(Summary)
+        .filter_by(recording_id=recording.id)
+        .order_by(Summary.created_at.desc())
+        .first()
+    )
+    action_items = (
+        db.session.query(ActionItem)
+        .filter_by(recording_id=recording.id)
+        .all()
+    )
+
+    if not summary:
+        default_status = (
+            "pending" if recording.status in ("queued", "processing", "completed") else "failed"
+        )
+        return api_success(
+            data={
+                "recording_id": str(recording.id),
+                "status": default_status,
+                "summary_markdown": "",
+                "key_takeaways": [],
+                "decisions": [],
+                "action_items": [],
+                "topics": [],
+                "model_name": current_app.config.get("OLLAMA_MODEL", "llama3.2"),
+                "completed_at": None,
+                "error_message": None,
+            },
+            message="Analysis has not been generated yet",
+        )
+
+    data = summary.to_dict()
+    data["action_items"] = [act.to_dict() for act in action_items]
+    return api_success(data=data, message="AI analysis retrieved successfully")
+
+
+@recordings_bp.route("/<uuid:recording_id>/analysis/status", methods=["GET"])
+def get_recording_analysis_status(recording_id: uuid.UUID):
+    """Retrieve current AI analysis processing status."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    summary = (
+        db.session.query(Summary)
+        .filter_by(recording_id=recording.id)
+        .order_by(Summary.created_at.desc())
+        .first()
+    )
+
+    if not summary:
+        return api_success(
+            data={
+                "recording_id": str(recording.id),
+                "status": "pending",
+                "model_name": current_app.config.get("OLLAMA_MODEL", "llama3.2"),
+                "completed_at": None,
+                "error_message": None,
+            },
+            message="Analysis status retrieved",
+        )
+
+    return api_success(
+        data={
+            "recording_id": str(recording.id),
+            "summary_id": str(summary.id),
+            "status": summary.status,
+            "model_name": summary.model_name,
+            "completed_at": summary.completed_at.isoformat() if summary.completed_at else None,
+            "error_message": summary.error_message,
+        },
+        message="Analysis status retrieved",
+    )
+
+
+@recordings_bp.route("/<uuid:recording_id>/analysis/regenerate", methods=["POST"])
+def regenerate_recording_analysis(recording_id: uuid.UUID):
+    """Request asynchronous regeneration of AI insights for a completed recording."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    if recording.status in ("queued", "processing"):
+        return api_error(
+            "Recording is currently still being transcribed",
+            code="TRANSCRIPTION_IN_PROGRESS",
+            status_code=409,
+        )
+
+    summary = db.session.query(Summary).filter_by(recording_id=recording.id).first()
+    if summary and summary.status == "processing":
+        return api_error(
+            "AI analysis is already currently processing",
+            code="ANALYSIS_IN_PROGRESS",
+            status_code=409,
+        )
+
+    if not summary:
+        summary = Summary(
+            id=uuid.uuid4(),
+            recording_id=recording.id,
+            status="pending",
+            model_name=current_app.config.get("OLLAMA_MODEL", "llama3.2"),
+            prompt_version=current_app.config.get("AI_PROMPT_VERSION", "v1"),
+            summary_markdown="",
+            key_takeaways=[],
+            decisions=[],
+            topics=[],
+        )
+        db.session.add(summary)
+    else:
+        summary.status = "pending"
+        summary.error_message = None
+
+    db.session.commit()
+
+    try:
+        analyze_recording_task.delay(str(recording.id), str(summary.id))
+    except Exception as exc:
+        current_app.logger.warning("Celery analyze task dispatch failed: %s", exc)
+
+    return api_success(
+        data=summary.to_dict(),
+        message="AI insights regeneration enqueued successfully",
+        status_code=202,
+    )
+
+
+@recordings_bp.route("/<uuid:recording_id>/ask", methods=["POST"])
+def ask_recording_question(recording_id: uuid.UUID):
+    """Ask a question grounded exclusively in the recording's audio transcript."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    recording = (
+        db.session.query(Recording)
+        .filter(Recording.id == recording_id, Recording.workspace_id == workspace.id)
+        .first()
+    )
+
+    if not recording:
+        return api_error("Recording not found", code="NOT_FOUND", status_code=404)
+
+    payload = request.get_json(silent=True)
+    if not payload or not isinstance(payload, dict):
+        return api_error(
+            "Request body must be a JSON object with 'question'",
+            code="BAD_REQUEST",
+            status_code=400,
+        )
+
+    question = str(payload.get("question", "")).strip()
+    if not question:
+        return api_error("Question cannot be empty", code="EMPTY_QUESTION", status_code=400)
+
+    if len(question) > 1000:
+        return api_error(
+            "Question exceeds maximum length of 1000 characters",
+            code="QUESTION_TOO_LONG",
+            status_code=400,
+        )
+
+    segments = (
+        db.session.query(TranscriptSegment)
+        .filter_by(recording_id=recording.id)
+        .order_by(TranscriptSegment.start_time.asc())
+        .all()
+    )
+
+    if not segments:
+        return api_error(
+            "This recording has no transcript dialogue to answer questions from.",
+            code="NO_TRANSCRIPT",
+            status_code=400,
+        )
+
+    lines = []
+    for s in segments:
+        m = int(s.start_time // 60)
+        sec = int(s.start_time % 60)
+        lines.append(f"[{m:02d}:{sec:02d}] {s.speaker}: {s.text}")
+    transcript_text = "\n".join(lines)
+
+    try:
+        answer_result = OllamaService.answer_question(transcript_text, question)
+        return api_success(
+            data={
+                "recording_id": str(recording.id),
+                "question": question,
+                "answer": answer_result["answer"],
+                "supported_by_transcript": answer_result["supported_by_transcript"],
+                "timestamps": answer_result["timestamps"],
+                "model_name": answer_result["model_name"],
+            },
+            message="Question answered successfully",
+            status_code=200,
+        )
+    except OllamaServiceError as err:
+        return api_error(
+            f"AI Question Answering failed: {str(err)}",
+            code="AI_SERVICE_UNAVAILABLE",
+            status_code=503,
+        )
+    except Exception as exc:
+        current_app.logger.exception("Error answering recording question: %s", exc)
+        return api_error(
+            f"Internal error answering question: {str(exc)}",
+            code="INTERNAL_ERROR",
+            status_code=500,
+        )
+
+
+@recordings_bp.route("/<uuid:recording_id>/action-items/<uuid:action_id>", methods=["PATCH"])
+def toggle_action_item(recording_id: uuid.UUID, action_id: uuid.UUID):
+    """Toggle completion status of an action item."""
+    _, workspace = WorkspaceService.get_or_create_default_context()
+
+    item = (
+        db.session.query(ActionItem)
+        .join(Recording, ActionItem.recording_id == Recording.id)
+        .filter(
+            ActionItem.id == action_id,
+            ActionItem.recording_id == recording_id,
+            Recording.workspace_id == workspace.id,
+        )
+        .first()
+    )
+
+    if not item:
+        return api_error("Action item not found", code="NOT_FOUND", status_code=404)
+
+    payload = request.get_json(silent=True) or {}
+    if "completed" in payload:
+        item.completed = bool(payload["completed"])
+    else:
+        item.completed = not item.completed
+
+    db.session.commit()
+    return api_success(data=item.to_dict(), message="Action item updated")

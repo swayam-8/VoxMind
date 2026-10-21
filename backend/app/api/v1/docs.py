@@ -164,6 +164,89 @@ OPENAPI_SPEC = {
                 },
             },
         },
+        "/recordings/{id}/analysis": {
+            "get": {
+                "summary": "Retrieve AI intelligence analysis (summary, takeaways, decisions)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Structured AI intelligence analysis"},
+                    "404": {"description": "Recording not found"},
+                },
+            },
+        },
+        "/recordings/{id}/analysis/status": {
+            "get": {
+                "summary": "Retrieve AI analysis processing status",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Analysis processing status"},
+                    "404": {"description": "Recording not found"},
+                },
+            },
+        },
+        "/recordings/{id}/analysis/regenerate": {
+            "post": {
+                "summary": "Request asynchronous regeneration of AI insights",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "responses": {
+                    "202": {"description": "Regeneration task enqueued"},
+                    "404": {"description": "Recording not found"},
+                    "409": {"description": "Analysis or transcription is already in progress"},
+                },
+            },
+        },
+        "/recordings/{id}/ask": {
+            "post": {
+                "summary": "Ask a question grounded exclusively in the audio transcript",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string", "format": "uuid"},
+                    }
+                ],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["question"],
+                                "properties": {"question": {"type": "string"}},
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {"description": "Grounded answer with evidence timestamps"},
+                    "400": {"description": "Invalid question or no transcript dialogue"},
+                    "404": {"description": "Recording not found"},
+                    "503": {"description": "Local Ollama service unavailable"},
+                },
+            },
+        },
         "/jobs/{id}": {
             "get": {
                 "summary": "Retrieve transcription job execution metadata and status",

@@ -6,6 +6,7 @@ import pytest
 from app import create_app
 from app.extensions import db
 from app.services.transcription_service import TranscriptionService
+from app.services.ollama_service import OllamaService
 
 
 def generate_wav_bytes(duration_seconds: float = 1.0, sample_rate: int = 16000) -> bytes:
@@ -78,3 +79,69 @@ def mock_transcription():
     TranscriptionService.set_mock_transcriber(_mock_transcribe)
     yield _mock_transcribe
     TranscriptionService.clear_mock_transcriber()
+
+
+@pytest.fixture(autouse=True)
+def mock_ollama_global():
+    """Mock Ollama local LLM during all automated test runs."""
+    def _mock_generate(transcript_text):
+        return {
+            "model_name": "llama3.2",
+            "summary": (
+                "The team aligned on the Q4 release roadmap, "
+                "finalizing the Friday staging deployment timeline."
+            ),
+            "key_takeaways": [
+                "Database migration completed ahead of schedule.",
+                "Staging deployment target confirmed for Friday at 3 PM.",
+                "Security review scheduled for next Tuesday.",
+            ],
+            "decisions": [
+                {
+                    "decision": "Approved deployment to staging on Friday.",
+                    "context": "All integration tests passed with zero regressions.",
+                    "source_timestamp": 45.0,
+                }
+            ],
+            "action_items": [
+                {
+                    "task": "Review and merge pull request #42",
+                    "assignee": "Alex Chen",
+                    "due_date": "Friday",
+                    "completed": False,
+                    "source_timestamp": 60.5,
+                },
+                {
+                    "task": "Configure production monitoring alerts",
+                    "assignee": None,
+                    "due_date": None,
+                    "completed": False,
+                    "source_timestamp": 90.0,
+                },
+            ],
+            "topics": ["Q4 Roadmap", "Staging Deployment", "Security Review"],
+        }
+
+    def _mock_qa(transcript_text, question):
+        q_lower = question.lower()
+        if "deployment" in q_lower or "staging" in q_lower or "friday" in q_lower:
+            return {
+                "answer": "The staging deployment is scheduled for Friday at [01:00].",
+                "supported_by_transcript": True,
+                "timestamps": [60.0],
+                "model_name": "llama3.2",
+            }
+        return {
+            "answer": (
+                "The provided transcript does not contain information to answer this question."
+            ),
+            "supported_by_transcript": False,
+            "timestamps": [],
+            "model_name": "llama3.2",
+        }
+
+    OllamaService.set_mock_generator(_mock_generate)
+    OllamaService.set_mock_qa(_mock_qa)
+    yield
+    OllamaService.clear_mock_generator()
+    OllamaService.clear_mock_qa()

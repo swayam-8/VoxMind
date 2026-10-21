@@ -165,14 +165,21 @@ Navigate to `http://localhost:5173/showcase` to interact with the **Obsidian AI 
 # 1. Start Redis (via Docker or local service)
 docker run -d --name voxmind-redis -p 6379:6379 redis:7-alpine
 
-# 2. Run Database Migrations / Seed data
+# 2. Start local Ollama & Pull the model (Phase 5)
+# Ensure Ollama is running at http://localhost:11434
+ollama pull llama3.2
+
+# 3. Run Database Migrations / Seed data
 cd backend
+.\.venv\Scripts\flask db upgrade
+# (Optional) seed demo data:
 .\.venv\Scripts\python seed.py
 
-# 3. Start Flask REST API Server
+# 4. Start Flask REST API Server
 .\.venv\Scripts\python wsgi.py
 
-# 4. Start Celery Background Transcription Worker (separate terminal)
+# 5. Start Celery Background Worker (separate terminal)
+# Handles transcription (faster-whisper) + AI intelligence analysis (Ollama)
 # On Windows, use threads pool:
 .\.venv\Scripts\celery -A celery_worker.celery worker --loglevel=info --pool=threads --concurrency=2
 # On Linux / macOS / Docker:
@@ -191,7 +198,7 @@ npm run build --prefix frontend
 # Frontend lint check
 npm run lint --prefix frontend
 
-# Backend test suite (Pytest with mock transcription inference)
+# Backend test suite (34 Pytest tests covering health, uploads, faster-whisper, and Ollama intelligence)
 $env:PYTHONPATH="backend"; .\backend\.venv\Scripts\pytest backend\tests -v
 
 # Backend code hygiene (Flake8 linter)
@@ -204,7 +211,7 @@ $env:PYTHONPATH="backend"; .\backend\.venv\Scripts\pytest backend\tests -v
 # Spin up PostgreSQL (pgvector), Redis, Flask REST API, Celery Worker, and Frontend
 docker compose up -d --build
 
-# View worker logs
+# View worker logs (transcription & Ollama pipeline)
 docker compose logs -f celery_worker
 ```
 
@@ -218,6 +225,6 @@ docker compose logs -f celery_worker
 | **Phase 2** | **Application Shell, Premium Routes & Interactive Audio Player** | **Completed** |
 | **Phase 3** | **Flask REST API, SQLAlchemy Models & Alembic Migrations** | **Completed** |
 | **Phase 4** | **Celery Background Queue + Local faster-whisper Transcription** | **Completed** |
-| Phase 5 | Ollama Local LLM Summarization, Action Items & Decision Extraction | Next |
-| Phase 6 | Vector Chunking, Semantic Search & "Ask VoxMind" RAG Engine | Pending |
+| **Phase 5** | **Ollama Local LLM Summarization, Action Items, Decisions & Grounded Q&A** | **Completed** |
+| Phase 6 | Vector Chunking, Semantic Search & Cross-Recording RAG Engine | Next |
 | Phase 7 | Collections, Developer API Keys & Live Diagnostics Hub | Pending |
