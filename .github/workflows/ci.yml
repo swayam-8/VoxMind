@@ -1,0 +1,104 @@
+name: VoxMind CI Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. Frontend: Linting, TypeScript Verification, & Production Build
+  # ============================================================================
+  frontend-ci:
+    name: Frontend (React + Vite + TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Run linter (oxlint)
+        run: npm run lint
+
+      - name: Type check and production build
+        run: npm run build
+
+  # ============================================================================
+  # 2. Backend: TypeScript Compilation, Security, & Vitest Suite
+  # ============================================================================
+  backend-ci:
+    name: Backend (Node.js + Express + Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Type check (tsc)
+        run: npm run build
+
+      - name: Run Vitest integration test suite
+        env:
+          NODE_ENV: test
+          PORT: 5001
+          JWT_SECRET: voxmind-ci-testing-jwt-secret-key-32chars-minimum
+        run: npm run test
+
+  # ============================================================================
+  # 3. AI Service: Contract & Schema Verification (FastAPI + Pytest)
+  # ============================================================================
+  ai-service-ci:
+    name: AI Microservice (FastAPI + Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: ai-service/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ai-service/requirements.txt
+
+      - name: Run Pytest contract and integration suite
+        env:
+          PYTHONPATH: ai-service
+          OLLAMA_BASE_URL: http://localhost:11434
+          OLLAMA_MODEL: llama3.2
+        run: |
+          pytest ai-service/tests/test_ai_service.py -v --tb=short
