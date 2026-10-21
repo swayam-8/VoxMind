@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { AudioWaveform, Lock, Mail, User, ArrowRight } from "lucide-react"
+import { AudioWaveform, Lock, Mail, User, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
+import { apiClient } from "@/lib/api-client"
 
 export function RegisterPage() {
   const [fullName, setFullName] = useState("")
@@ -17,17 +18,20 @@ export function RegisterPage() {
     email?: string
     password?: string
     confirmPassword?: string
+    general?: string
   }>({})
   const navigate = useNavigate()
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isLoading) return
+
     const newErrors: typeof errors = {}
 
-    if (!fullName) newErrors.fullName = "Full name is required."
-    if (!email) {
+    if (!fullName.trim()) newErrors.fullName = "Full name is required."
+    if (!email.trim()) {
       newErrors.email = "Email address is required."
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
       newErrors.email = "Valid email address required."
     }
 
@@ -49,16 +53,33 @@ export function RegisterPage() {
     setErrors({})
     setIsLoading(true)
 
-    setTimeout(() => {
-      setIsLoading(false)
-      localStorage.setItem("voxmind_access_token", "demo_jwt_session_token_xyz")
+    try {
+      const res = await apiClient.register({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim(),
+      })
+
+      const userName = res.data?.user?.fullName || res.data?.user?.email || fullName.trim()
+
       toast({
-        title: "Account Created",
-        description: "Your local tenant workspace has been initialized.",
+        title: "Account Created Successfully",
+        description: `Welcome to VoxMind, ${userName}! Your personal workspace is initialized.`,
         variant: "success",
       })
+
       navigate("/app/overview")
-    }, 800)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create account"
+      setErrors({ general: msg })
+      toast({
+        title: "Registration Failed",
+        description: msg,
+        variant: "danger",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -81,102 +102,139 @@ export function RegisterPage() {
         <ThemeToggle />
       </div>
 
-      {/* Main Register Box */}
+      {/* Main Registration Form */}
       <div className="w-full max-w-md mx-auto my-auto py-8">
         <div className="rounded-xl border border-border bg-surface-1 p-6 sm:p-8 shadow-xl space-y-6">
-          <div className="space-y-1.5 text-center">
+          <div className="space-y-1.5 text-center sm:text-left">
             <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-              Create Your Workspace
+              Initialize Local Node
             </h1>
             <p className="text-xs text-text-secondary">
-              Set up your local-first voice intelligence account.
+              Set up your local administrator account and private encrypted workspace.
             </p>
           </div>
 
+          {errors.general && (
+            <div className="p-3 text-xs text-danger bg-danger/10 border border-danger/20 rounded-md">
+              {errors.general}
+            </div>
+          )}
+
           <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-text-muted" />
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-text-secondary block">
                 Full Name
               </label>
-              <Input
-                placeholder="Elena Vance"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                error={!!errors.fullName}
-                helperText={errors.fullName}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                <Input
+                  type="text"
+                  placeholder="Elena Vance"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="pl-9 bg-surface-2 border-border text-sm"
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.fullName && (
+                <p className="text-[11px] text-danger mt-1">{errors.fullName}</p>
+              )}
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-text-muted" />
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-text-secondary block">
                 Work Email
               </label>
-              <Input
-                type="email"
-                placeholder="elena@company.internal"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={!!errors.email}
-                helperText={errors.email}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                <Input
+                  type="email"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9 bg-surface-2 border-border text-sm"
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-[11px] text-danger mt-1">{errors.email}</p>
+              )}
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-text-muted" />
-                Master Password
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-text-secondary block">
+                Master Password (min. 8 characters)
               </label>
-              <Input
-                type="password"
-                placeholder="At least 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                error={!!errors.password}
-                helperText={errors.password}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                <Input
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9 bg-surface-2 border-border text-sm"
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-[11px] text-danger mt-1">{errors.password}</p>
+              )}
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-text-secondary block">
                 Confirm Password
               </label>
-              <Input
-                type="password"
-                placeholder="Re-enter password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                error={!!errors.confirmPassword}
-                helperText={errors.confirmPassword}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                <Input
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-9 bg-surface-2 border-border text-sm"
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-[11px] text-danger mt-1">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <Button
               type="submit"
-              variant="default"
-              className="w-full"
-              isLoading={isLoading}
+              className="w-full mt-2"
+              disabled={isLoading}
             >
-              Initialize Workspace <ArrowRight className="w-4 h-4 ml-1.5" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Initializing Node...
+                </>
+              ) : (
+                <>
+                  Initialize Workspace
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              )}
             </Button>
           </form>
 
-          <div className="text-center text-xs text-text-secondary">
-            Already have an account?{" "}
-            <Link to="/login" className="text-accent font-medium hover:underline">
-              Sign in
-            </Link>
+          <div className="text-center pt-2 border-t border-border">
+            <p className="text-xs text-text-secondary">
+              Already initialized this node?{" "}
+              <Link to="/login" className="text-accent hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="text-center text-xs text-text-muted max-w-md mx-auto">
-        Your data never leaves your environment. No telemetry tracking or external proxies.
+      {/* Footer */}
+      <div className="max-w-6xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-text-muted gap-2">
+        <span>VoxMind Local-First Intelligence — Local persistence mode</span>
+        <span>Version 1.0.0 (Release)</span>
       </div>
     </div>
   )

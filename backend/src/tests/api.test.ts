@@ -78,6 +78,82 @@ describe('VoxMind Express API Test Suite', () => {
     expect(res.body.workspace.id).toBe(workspaceId);
   });
 
+  it('POST /api/v1/auth/register rejects duplicate email with 409', async () => {
+    const res = await request(app).post('/api/v1/auth/register').send({
+      email: 'test@voxmind.dev',
+      password: 'password1234',
+      fullName: 'Duplicate Engineer',
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('EMAIL_EXISTS');
+  });
+
+  it('POST /api/v1/auth/login rejects invalid credentials with 401', async () => {
+    const res = await request(app).post('/api/v1/auth/login').send({
+      email: 'test@voxmind.dev',
+      password: 'wrongpassword',
+    });
+
+    expect(res.status).toBe(401);
+    expect(res.body.code).toBe('INVALID_CREDENTIALS');
+  });
+
+  it('PATCH /api/v1/auth/me updates profile full name', async () => {
+    const res = await request(app)
+      .patch('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        fullName: 'Principal AI Architect',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.fullName).toBe('Principal AI Architect');
+
+    // Confirm GET /auth/me reflects the update
+    const meRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${authToken}`);
+    expect(meRes.body.user.fullName).toBe('Principal AI Architect');
+  });
+
+  it('PATCH /api/v1/auth/me rotates user password securely', async () => {
+    // Fails if currentPassword is wrong
+    const failRes = await request(app)
+      .patch('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        currentPassword: 'wrongcurrentpassword',
+        newPassword: 'newsecurepassword1234',
+      });
+    expect(failRes.status).toBe(400);
+
+    // Succeeds with correct currentPassword
+    const okRes = await request(app)
+      .patch('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        currentPassword: 'password1234',
+        newPassword: 'newsecurepassword1234',
+      });
+    expect(okRes.status).toBe(200);
+
+    // Old password should fail login
+    const oldLogin = await request(app).post('/api/v1/auth/login').send({
+      email: 'test@voxmind.dev',
+      password: 'password1234',
+    });
+    expect(oldLogin.status).toBe(401);
+
+    // New password should succeed login and return a fresh token
+    const newLogin = await request(app).post('/api/v1/auth/login').send({
+      email: 'test@voxmind.dev',
+      password: 'newsecurepassword1234',
+    });
+    expect(newLogin.status).toBe(200);
+    authToken = newLogin.body.access_token;
+  });
+
   it('POST /api/v1/collections creates a new collection', async () => {
     const res = await request(app)
       .post('/api/v1/collections')

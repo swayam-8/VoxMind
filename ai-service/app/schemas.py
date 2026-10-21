@@ -1,12 +1,21 @@
 """Pydantic schemas for AI Microservice requests and responses."""
 
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class TranscribeRequest(BaseModel):
-    audio_path: str = Field(..., description="Absolute server path to audio file")
+    audio_path: str = Field(default="", description="Absolute server path to audio file")
+    file_path: Optional[str] = Field(None, description="Alias for audio_path")
     language: Optional[str] = Field(None, description="Optional ISO language code")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("audio_path") and data.get("file_path"):
+                data["audio_path"] = data["file_path"]
+        return data
 
 
 class TranscriptSegmentResult(BaseModel):
@@ -28,6 +37,7 @@ class TranscribeResponse(BaseModel):
 class AnalyzeRequest(BaseModel):
     transcript_text: str = Field(..., description="Ordered dialogue transcript with speaker tags")
     model_name: Optional[str] = None
+    title: Optional[str] = None
 
 
 class ActionItemResult(BaseModel):
@@ -52,12 +62,15 @@ class AnalyzeResponse(BaseModel):
     decisions: List[DecisionResult]
     action_items: List[ActionItemResult]
     topics: List[str]
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 class AskTranscriptRequest(BaseModel):
     transcript_text: str
     question: str
     model_name: Optional[str] = None
+    title: Optional[str] = None
 
 
 class AskTranscriptResponse(BaseModel):
@@ -67,6 +80,8 @@ class AskTranscriptResponse(BaseModel):
     supported_by_transcript: bool
     timestamps: List[float]
     model_name: str
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 class EmbedRequest(BaseModel):
@@ -86,14 +101,28 @@ class ChunkItem(BaseModel):
     end_time: float
     speaker: str
     text: str
-    source_segment_ids: List[str]
-    content_hash: str
+    source_segment_ids: List[str] = Field(default_factory=list)
+    content_hash: str = ""
+    token_count: int = 0
 
 
 class ChunkRequest(BaseModel):
     segments: List[Dict[str, Any]]
     target_words: Optional[int] = 180
     overlap_words: Optional[int] = 35
+    max_tokens: Optional[int] = None
+    overlap_tokens: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if data.get("target_words") is None and data.get("max_tokens") is not None:
+                # Approximate 1 token ~ 0.75 words, or use direct integer
+                data["target_words"] = int(data["max_tokens"] * 0.75) if data["max_tokens"] > 50 else data["max_tokens"]
+            if data.get("overlap_words") is None and data.get("overlap_tokens") is not None:
+                data["overlap_words"] = int(data["overlap_tokens"] * 0.75) if data["overlap_tokens"] > 10 else data["overlap_tokens"]
+        return data
 
 
 class ChunkResponse(BaseModel):
@@ -113,17 +142,42 @@ class CitationItem(BaseModel):
 
 
 class RAGRequest(BaseModel):
-    question: str
-    passages: List[Dict[str, Any]]
+    question: str = Field(default="", description="Question to answer")
+    query: Optional[str] = Field(None, description="Alias for question")
+    passages: List[Dict[str, Any]] = Field(default_factory=list, description="Retrieved candidate passages")
+    chunks: Optional[List[Dict[str, Any]]] = Field(None, description="Alias for passages")
     model_name: Optional[str] = None
+    top_k: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("question") and data.get("query"):
+                data["question"] = data["query"]
+            if not data.get("passages") and data.get("chunks"):
+                data["passages"] = data["chunks"]
+            # Ensure each passage has a score key
+            if "passages" in data and isinstance(data["passages"], list):
+                for p in data["passages"]:
+                    if isinstance(p, dict):
+                        if "score" not in p and "similarity" in p:
+                            p["score"] = p["similarity"]
+                        elif "score" not in p:
+                            p["score"] = 0.5
+        return data
 
 
 class RAGResponse(BaseModel):
     success: bool = True
     answer: str
     citations: List[CitationItem]
+    sources: Optional[List[Dict[str, Any]]] = None
     sufficient_evidence: bool
     model_name: str
+    confidence: float = 0.95
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 class HealthResponse(BaseModel):

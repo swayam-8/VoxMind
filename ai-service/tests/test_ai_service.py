@@ -178,3 +178,56 @@ def test_rag_endpoint(client: TestClient):
     data = res.json()
     assert data["sufficient_evidence"] is True
     assert len(data["citations"]) == 1
+
+
+def test_transcribe_accepts_file_path_alias(client: TestClient, tmp_path):
+    dummy_audio = tmp_path / "test_alias.wav"
+    dummy_audio.write_bytes(b"RIFF....WAVEfmt ")
+
+    # Using file_path instead of audio_path
+    res = client.post("/transcribe", json={"file_path": str(dummy_audio)})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["language"] == "en"
+
+
+def test_chunk_accepts_max_tokens_alias(client: TestClient):
+    segments = [
+        {"start": 0.0, "end": 2.0, "speaker": "Alex", "text": "First passage"},
+        {"start": 2.0, "end": 4.0, "speaker": "Elena", "text": "Second passage"},
+    ]
+    # Using max_tokens and overlap_tokens instead of target_words and overlap_words
+    res = client.post("/chunk", json={"segments": segments, "max_tokens": 250, "overlap_tokens": 40})
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["chunks"]) >= 1
+
+
+def test_rag_accepts_query_and_chunks_alias(client: TestClient):
+    chunks = [
+        {
+            "recording_id": "rec-1",
+            "recording_title": "Architecture Sync",
+            "chunk_id": "chunk-1",
+            "start_time": 0.0,
+            "end_time": 2.5,
+            "speaker": "Speaker 1",
+            "text": "Hello and welcome to VoxMind.",
+            "similarity": 0.95,
+        }
+    ]
+    # Using query and chunks with similarity instead of question and passages with score
+    res = client.post("/rag", json={"query": "Where does VoxMind run?", "chunks": chunks})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["sufficient_evidence"] is True
+    assert len(data["citations"]) == 1
+    assert data["citations"][0]["recording_id"] == "rec-1"
+    assert "sources" in data
+    assert len(data["sources"]) == 1
+
+
+def test_validation_errors_on_empty_payload(client: TestClient):
+    res = client.post("/analyze", json={})
+    assert res.status_code == 422

@@ -153,9 +153,9 @@ export function startAiWorker(): Worker<AiJobData> {
               userId: recording.userId,
               resourceType: 'embedding',
               model: embedRes.model || 'all-MiniLM-L6-v2',
-              promptTokens: chunkDocs.reduce((acc, c) => acc + c.tokenCount, 0),
+              promptTokens: chunkDocs.reduce((acc, c) => acc + (c.tokenCount || 0), 0),
               completionTokens: 0,
-              totalTokens: chunkDocs.reduce((acc, c) => acc + c.tokenCount, 0),
+              totalTokens: chunkDocs.reduce((acc, c) => acc + (c.tokenCount || 0), 0),
               durationSeconds: (Date.now() - startTime) / 1000,
               statusCode: 200,
             });

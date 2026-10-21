@@ -50,6 +50,51 @@ export function OverviewPage() {
     queryFn: () => apiClient.getRecordings({ per_page: 5 }),
   })
 
+  // Fetch live system & database status
+  const {
+    data: healthRes,
+    isLoading: healthLoading,
+    isError: healthError,
+  } = useQuery({
+    queryKey: ["system-health"],
+    queryFn: () => apiClient.getHealth(),
+    refetchInterval: 30000,
+  })
+
+  const getDbBadge = () => {
+    if (healthLoading) {
+      return (
+        <Badge variant="outline" className="text-[10px] font-mono opacity-70">
+          Checking node...
+        </Badge>
+      )
+    }
+    if (healthError || !healthRes?.data) {
+      return (
+        <Badge variant="danger" className="text-[10px] font-mono flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 text-danger" />
+          Backend Offline
+        </Badge>
+      )
+    }
+    const isDbConnected =
+      (healthRes.data as any).database === "connected" || healthRes.data.status === "healthy"
+    if (isDbConnected) {
+      return (
+        <Badge variant="success" className="text-[10px] font-mono flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          MongoDB Connected
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="danger" className="text-[10px] font-mono flex items-center gap-1">
+        <AlertCircle className="w-3 h-3 text-danger" />
+        Database Disconnected
+      </Badge>
+    )
+  }
+
   const recordings = response?.data || []
   const totalCount = response?.meta?.total || 0
 
@@ -74,9 +119,7 @@ export function OverviewPage() {
             <h1 className="text-xl font-bold tracking-tight text-text-primary">
               Workspace Overview
             </h1>
-            <Badge variant="success" className="text-[10px] font-mono">
-              PostgreSQL Connected
-            </Badge>
+            {getDbBadge()}
           </div>
           <p className="mt-1 text-xs text-text-secondary">
             Voice intelligence pipeline status, recent activity, and library metrics.

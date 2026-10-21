@@ -18,17 +18,11 @@ import {
   AlertCircle,
   HelpCircle,
   Radio,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useTheme, type Theme } from "@/contexts/theme-context"
 import { toast } from "@/hooks/use-toast"
 import { apiClient, type ApiDiagnostics } from "@/lib/api-client"
@@ -36,11 +30,12 @@ import { apiClient, type ApiDiagnostics } from "@/lib/api-client"
 export function SettingsPage() {
   const { theme, setTheme } = useTheme()
 
-  // Profile Form
-  const [fullName, setFullName] = useState("Jane Doe")
-  const [email, setEmail] = useState("jane@voxmind.internal")
+  // Profile State
+  const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
 
-  // AI Configuration Form
+  // AI Configuration State (Reflective of node diagnostics)
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434")
   const [ollamaModel, setOllamaModel] = useState("llama3.2")
   const [whisperModel, setWhisperModel] = useState("base")
@@ -49,6 +44,7 @@ export function SettingsPage() {
   // Security Form
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   // Diagnostics Hub State
   const [diagnostics, setDiagnostics] = useState<ApiDiagnostics | null>(null)
@@ -56,18 +52,37 @@ export function SettingsPage() {
 
   useEffect(() => {
     let ignore = false
-    const init = async () => {
+
+    // Load diagnostics and user profile concurrently
+    const loadInitialData = async () => {
       try {
         setDiagnosticsLoading(true)
-        const res = await apiClient.getDiagnostics()
-        if (!ignore) setDiagnostics(res.data)
-      } catch {
-        if (!ignore) setDiagnostics(null)
+        const [diagRes, userRes] = await Promise.allSettled([
+          apiClient.getDiagnostics(),
+          apiClient.getCurrentUser(),
+        ])
+
+        if (!ignore) {
+          if (diagRes.status === "fulfilled" && diagRes.value.data) {
+            const d = diagRes.value.data
+            setDiagnostics(d)
+            if (d.services?.ollama?.base_url) setOllamaUrl(d.services.ollama.base_url)
+            if (d.services?.ollama?.configured_model) setOllamaModel(d.services.ollama.configured_model)
+            if (d.services?.whisper?.model) setWhisperModel(d.services.whisper.model)
+            if (d.services?.whisper?.device) setWhisperDevice(d.services.whisper.device)
+          }
+
+          if (userRes.status === "fulfilled" && userRes.value.data?.user) {
+            setFullName(userRes.value.data.user.fullName || "")
+            setEmail(userRes.value.data.user.email || "")
+          }
+        }
       } finally {
         if (!ignore) setDiagnosticsLoading(false)
       }
     }
-    void init()
+
+    void loadInitialData()
     return () => {
       ignore = true
     }
@@ -78,41 +93,99 @@ export function SettingsPage() {
       setDiagnosticsLoading(true)
       const res = await apiClient.getDiagnostics()
       setDiagnostics(res.data)
+      toast({
+        title: "Diagnostics Refreshed",
+        description: "Live node telemetry updated successfully.",
+        variant: "success",
+      })
     } catch {
       setDiagnostics(null)
+      toast({
+        title: "Telemetry Failed",
+        description: "Could not reach diagnostics endpoint.",
+        variant: "danger",
+      })
     } finally {
       setDiagnosticsLoading(false)
     }
   }
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast({
-      title: "Profile Saved",
-      description: "User details and preferences updated.",
-      variant: "success",
-    })
+    if (!fullName.trim()) return
+
+    try {
+      setIsSavingProfile(true)
+      const res = await apiClient.updateProfile({ fullName: fullName.trim() })
+      if (res.data?.user?.fullName) {
+        setFullName(res.data.user.fullName)
+      }
+      toast({
+        title: "Profile Saved",
+        description: "User details updated successfully in database.",
+        variant: "success",
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update profile"
+      toast({
+        title: "Update Failed",
+        description: msg,
+        variant: "danger",
+      })
+    } finally {
+      setIsSavingProfile(false)
+    }
   }
 
   const handleSaveAi = (e: React.FormEvent) => {
     e.preventDefault()
     toast({
-      title: "AI Configuration Saved",
-      description: "Local inference parameters applied to pipeline.",
+      title: "Node Configuration Note",
+      description: "AI inference models are configured at the host level via environment variables (OLLAMA_MODEL, WHISPER_MODEL).",
       variant: "success",
     })
   }
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentPassword || !newPassword) return
-    setCurrentPassword("")
-    setNewPassword("")
-    toast({
-      title: "Password Updated",
-      description: "Your master password was rotated successfully.",
-      variant: "success",
-    })
+    if (!currentPassword || !newPassword) {
+      toast({
+        title: "Validation Error",
+        description: "Both current and new passwords are required.",
+        variant: "danger",
+      })
+      return
+    }
+
+    if (newPassword.length < 8) {
+      toast({
+        title: "Validation Error",
+        description: "New password must be at least 8 characters long.",
+        variant: "danger",
+      })
+      return
+    }
+
+    try {
+      setIsUpdatingPassword(true)
+      await apiClient.updateProfile({ currentPassword, newPassword })
+      setCurrentPassword("")
+      setNewPassword("")
+      toast({
+        title: "Password Updated",
+        description: "Your master password was changed successfully.",
+        variant: "success",
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update password"
+      toast({
+        title: "Password Change Failed",
+        description: msg,
+        variant: "danger",
+      })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
   }
 
   const getStatusBadge = (status?: string) => {
@@ -199,33 +272,33 @@ export function SettingsPage() {
                 {getStatusBadge(diagnostics.services.database?.status)}
               </div>
               <p className="text-[11px] text-text-secondary font-mono">
-                Latency: {diagnostics.services.database?.latency_ms ?? 0} ms • {diagnostics.services.database?.message}
+                {diagnostics.services.database?.message || "MongoDB Operational"}
               </p>
             </div>
 
-            {/* Vector Storage & HNSW */}
+            {/* Vector Storage */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-emerald-500" /> pgvector & HNSW
+                  <Layers className="w-3.5 h-3.5 text-emerald-500" /> Vector Retrieval Engine
                 </span>
                 {getStatusBadge(diagnostics.services.vector_storage?.status)}
               </div>
               <p className="text-[11px] text-text-secondary font-mono">
-                {diagnostics.services.vector_storage?.message}
+                {diagnostics.services.vector_storage?.message || "Cosine Similarity Retrieval Active"}
               </p>
             </div>
 
-            {/* Redis & Celery */}
+            {/* BullMQ Worker / Redis */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5 text-blue-500" /> Celery Background Worker
+                  <Server className="w-3.5 h-3.5 text-blue-500" /> BullMQ Asynchronous Queues
                 </span>
-                {getStatusBadge(diagnostics.services.celery?.status)}
+                {getStatusBadge(diagnostics.services.celery?.status || diagnostics.services.redis?.status)}
               </div>
               <p className="text-[11px] text-text-secondary font-mono">
-                {diagnostics.services.celery?.message}
+                {diagnostics.services.celery?.message || "BullMQ Audio & AI Queues Initialized"}
               </p>
             </div>
 
@@ -238,7 +311,7 @@ export function SettingsPage() {
                 {getStatusBadge(diagnostics.services.whisper?.status)}
               </div>
               <p className="text-[11px] text-text-secondary font-mono">
-                {diagnostics.services.whisper?.message}
+                {diagnostics.services.whisper?.message || "faster-whisper CPU int8"}
               </p>
             </div>
 
@@ -251,7 +324,7 @@ export function SettingsPage() {
                 {getStatusBadge(diagnostics.services.ollama?.status)}
               </div>
               <p className="text-[11px] text-text-secondary font-mono">
-                {diagnostics.services.ollama?.message}
+                {diagnostics.services.ollama?.message || "Ollama Model Pipeline"}
               </p>
             </div>
 
@@ -259,14 +332,12 @@ export function SettingsPage() {
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-text-secondary" /> Volume Storage
+                  <HardDrive className="w-3.5 h-3.5 text-text-secondary" /> Audio Storage Volume
                 </span>
                 {getStatusBadge(diagnostics.services.storage?.status)}
               </div>
               <p className="text-[11px] text-text-secondary font-mono">
-                {diagnostics.services.storage?.free_gb
-                  ? `${diagnostics.services.storage.free_gb} GB free / ${diagnostics.services.storage.total_gb} GB total`
-                  : diagnostics.services.storage?.path}
+                {diagnostics.services.storage?.message || diagnostics.services.storage?.path}
               </p>
             </div>
           </div>
@@ -301,6 +372,8 @@ export function SettingsPage() {
               <Input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                placeholder="Elena Vance"
+                disabled={isSavingProfile}
               />
             </div>
 
@@ -311,15 +384,25 @@ export function SettingsPage() {
               <Input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                disabled
+                className="opacity-75 cursor-not-allowed"
               />
             </div>
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" variant="default" size="sm">
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              Save Profile
+            <Button type="submit" variant="default" size="sm" disabled={isSavingProfile}>
+              {isSavingProfile ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  Save Profile
+                </>
+              )}
             </Button>
           </div>
         </form>
@@ -407,7 +490,7 @@ export function SettingsPage() {
           </div>
           <span className="text-xs text-emerald-500 font-mono flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            Online
+            Node-managed
           </span>
         </div>
 
@@ -419,8 +502,9 @@ export function SettingsPage() {
               </label>
               <Input
                 value={ollamaUrl}
-                onChange={(e) => setOllamaUrl(e.target.value)}
-                helperText="HTTP endpoint for local LLM inference."
+                readOnly
+                className="opacity-80"
+                helperText="Host environment variable: OLLAMA_BASE_URL"
               />
             </div>
 
@@ -430,8 +514,9 @@ export function SettingsPage() {
               </label>
               <Input
                 value={ollamaModel}
-                onChange={(e) => setOllamaModel(e.target.value)}
-                helperText="Model used for executive summaries & extraction."
+                readOnly
+                className="opacity-80"
+                helperText="Host environment variable: OLLAMA_MODEL"
               />
             </div>
 
@@ -439,40 +524,32 @@ export function SettingsPage() {
               <label className="text-xs font-medium text-text-secondary mb-1.5 block">
                 faster-whisper Model
               </label>
-              <Select value={whisperModel} onValueChange={setWhisperModel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Whisper Model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tiny">faster-whisper: tiny (Fastest, low VRAM)</SelectItem>
-                  <SelectItem value="base">faster-whisper: base (Recommended default)</SelectItem>
-                  <SelectItem value="small">faster-whisper: small (Higher precision)</SelectItem>
-                  <SelectItem value="medium">faster-whisper: medium (Enterprise quality)</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                value={whisperModel}
+                readOnly
+                className="opacity-80"
+                helperText="Host environment variable: WHISPER_MODEL"
+              />
             </div>
 
             <div>
               <label className="text-xs font-medium text-text-secondary mb-1.5 block">
                 Compute Device
               </label>
-              <Select value={whisperDevice} onValueChange={setWhisperDevice}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Device" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cpu">CPU (Standard, int8 quantized)</SelectItem>
-                  <SelectItem value="cuda">CUDA GPU (NVIDIA hardware)</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                value={whisperDevice}
+                readOnly
+                className="opacity-80"
+                helperText="Host environment variable: WHISPER_DEVICE"
+              />
             </div>
           </div>
 
-          <div className="flex items-center justify-end pt-2">
-            <Button type="submit" variant="default" size="sm">
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              Apply AI Settings
-            </Button>
+          <div className="p-3 rounded-lg bg-surface-2/60 border border-border text-[11px] text-text-muted flex items-start gap-2">
+            <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+            <span>
+              In VoxMind's local-first architecture, hardware models and endpoints are configured node-wide via environment variables. To change models, update <code>OLLAMA_MODEL</code> or <code>WHISPER_MODEL</code> in your configuration.
+            </span>
           </div>
         </form>
       </section>
@@ -502,6 +579,7 @@ export function SettingsPage() {
                 placeholder="••••••••••••"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
+                disabled={isUpdatingPassword}
               />
             </div>
 
@@ -514,6 +592,7 @@ export function SettingsPage() {
                 placeholder="At least 8 characters"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                disabled={isUpdatingPassword}
               />
             </div>
           </div>
@@ -523,10 +602,19 @@ export function SettingsPage() {
               type="submit"
               variant="secondary"
               size="sm"
-              disabled={!currentPassword || !newPassword}
+              disabled={!currentPassword || !newPassword || isUpdatingPassword}
             >
-              <Key className="w-3.5 h-3.5 mr-1.5" />
-              Update Password
+              {isUpdatingPassword ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Key className="w-3.5 h-3.5 mr-1.5" />
+                  Update Password
+                </>
+              )}
             </Button>
           </div>
         </form>

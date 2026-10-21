@@ -12,22 +12,22 @@ export class AuthController {
     try {
       const { email, password, fullName } = req.body;
 
-      const existing = await User.findOne({ email: email.toLowerCase() });
+      const existing = await User.findOne({ email: email.toLowerCase().trim() });
       if (existing) {
         throw new AppError('Email is already registered', 409, 'EMAIL_EXISTS');
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
       const user = await User.create({
-        email: email.toLowerCase(),
+        email: email.toLowerCase().trim(),
         passwordHash,
-        fullName: fullName || '',
+        fullName: (fullName || '').trim(),
       });
 
       // Create personal workspace for the user
       const slug = `ws-${user._id.substring(0, 8)}`;
       const workspace = await Workspace.create({
-        name: `${fullName || email.split('@')[0]}'s Workspace`,
+        name: `${fullName?.trim() || email.split('@')[0]}'s Workspace`,
         slug,
         createdBy: user._id,
         isPersonal: true,
@@ -46,7 +46,7 @@ export class AuthController {
         isSuperuser: user.isSuperuser,
       });
 
-      return res.status(201).json({
+      const payload = {
         access_token: token,
         accessToken: token,
         user: {
@@ -61,6 +61,13 @@ export class AuthController {
           slug: workspace.slug,
           role: 'owner',
         },
+      };
+
+      return res.status(201).json({
+        success: true,
+        message: 'Account created successfully',
+        data: payload,
+        ...payload,
       });
     } catch (error) {
       next(error);
@@ -71,7 +78,7 @@ export class AuthController {
     try {
       const { email, password } = req.body;
 
-      const user = await User.findOne({ email: email.toLowerCase() });
+      const user = await User.findOne({ email: email.toLowerCase().trim() });
       if (!user) {
         throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
       }
@@ -81,7 +88,6 @@ export class AuthController {
         throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
       }
 
-      // Find workspace
       let workspace = await Workspace.findOne({ createdBy: user._id });
       let role = 'owner';
 
@@ -114,7 +120,7 @@ export class AuthController {
         isSuperuser: user.isSuperuser,
       });
 
-      return res.json({
+      const payload = {
         access_token: token,
         accessToken: token,
         user: {
@@ -129,6 +135,13 @@ export class AuthController {
           slug: workspace.slug,
           role,
         },
+      };
+
+      return res.json({
+        success: true,
+        message: 'Signed in successfully',
+        data: payload,
+        ...payload,
       });
     } catch (error) {
       next(error);
@@ -140,7 +153,7 @@ export class AuthController {
       const user = req.user!;
       const workspace = await Workspace.findById(req.workspaceId);
 
-      return res.json({
+      const payload = {
         user: {
           id: user._id,
           email: user.email,
@@ -155,6 +168,68 @@ export class AuthController {
               role: req.userRole || 'owner',
             }
           : null,
+      };
+
+      return res.json({
+        success: true,
+        message: 'Current profile retrieved',
+        data: payload,
+        ...payload,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateMe(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const user = req.user!;
+      const { fullName, currentPassword, newPassword } = req.body;
+
+      if (fullName !== undefined) {
+        user.fullName = fullName.trim();
+      }
+
+      if (newPassword) {
+        if (!currentPassword) {
+          throw new AppError('Current password is required to set a new password', 400, 'PASSWORD_REQUIRED');
+        }
+        const isMatch = await user.checkPassword(currentPassword);
+        if (!isMatch) {
+          throw new AppError('Current password is incorrect', 400, 'INVALID_PASSWORD');
+        }
+        if (newPassword.length < 8) {
+          throw new AppError('New password must be at least 8 characters long', 400, 'PASSWORD_TOO_SHORT');
+        }
+        user.passwordHash = await bcrypt.hash(newPassword, 10);
+      }
+
+      await user.save();
+
+      const workspace = await Workspace.findById(req.workspaceId);
+
+      const payload = {
+        user: {
+          id: user._id,
+          email: user.email,
+          fullName: user.fullName,
+          isActive: user.isActive,
+        },
+        workspace: workspace
+          ? {
+              id: workspace._id,
+              name: workspace.name,
+              slug: workspace.slug,
+              role: req.userRole || 'owner',
+            }
+          : null,
+      };
+
+      return res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: payload,
+        ...payload,
       });
     } catch (error) {
       next(error);

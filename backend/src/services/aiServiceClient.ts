@@ -1,4 +1,5 @@
 import axios from 'axios';
+import path from 'path';
 import { config } from '../config/index.js';
 
 const client = axios.create({
@@ -10,7 +11,7 @@ export interface TranscribeResponse {
   language: string;
   duration: number;
   segments: Array<{
-    id: number;
+    id?: number;
     start: number;
     end: number;
     text: string;
@@ -22,11 +23,13 @@ export interface TranscribeResponse {
 export interface AnalyzeResponse {
   summary: string;
   key_takeaways: string[];
-  decisions: string[];
+  decisions: Array<{ decision: string; context?: string; source_timestamp?: number } | string>;
   action_items: Array<{
-    text: string;
+    task?: string;
+    text?: string;
     assignee?: string;
     due_date?: string;
+    completed?: boolean;
     status?: string;
   }>;
   topics: string[];
@@ -41,7 +44,9 @@ export interface ChunkItem {
   end_time: number;
   speaker: string;
   text: string;
-  token_count: number;
+  source_segment_ids?: string[];
+  content_hash?: string;
+  token_count?: number;
 }
 
 export interface ChunkResponse {
@@ -50,12 +55,23 @@ export interface ChunkResponse {
 
 export interface EmbedResponse {
   embeddings: number[][];
-  model: string;
+  model_name?: string;
+  model?: string;
   dimension: number;
 }
 
 export interface RagResponse {
   answer: string;
+  citations?: Array<{
+    recording_id: string;
+    recording_title: string;
+    chunk_id: string;
+    start_time: number;
+    end_time: number;
+    speaker: string;
+    quote: string;
+    score: number;
+  }>;
   sources: Array<{
     recording_id: string;
     recording_title?: string;
@@ -71,14 +87,28 @@ export interface RagResponse {
 }
 
 export class AiServiceClient {
-  static async checkHealth(): Promise<{ status: string; whisper_available: boolean; ollama_available: boolean; embeddings_available: boolean }> {
+  static async checkHealth(): Promise<{
+    status: string;
+    whisper_available: boolean;
+    ollama_available: boolean;
+    embeddings_available: boolean;
+  }> {
     const res = await client.get('/health', { timeout: 5000 });
-    return res.data;
+    const data = res.data;
+    const services = data.services || {};
+    return {
+      status: data.status || 'unknown',
+      whisper_available: services.whisper?.status === 'healthy',
+      ollama_available: services.ollama?.status === 'healthy',
+      embeddings_available: services.embedding?.status === 'healthy',
+    };
   }
 
   static async transcribeAudio(filePath: string, language?: string): Promise<TranscribeResponse> {
+    const resolvedPath = path.resolve(filePath);
     const res = await client.post('/transcribe', {
-      file_path: filePath,
+      audio_path: resolvedPath,
+      file_path: resolvedPath,
       language: language || null,
     });
     return res.data;
@@ -89,13 +119,29 @@ export class AiServiceClient {
       transcript_text: transcriptText,
       title: title || '',
     });
-    return res.data;
+    const d = res.data;
+    return {
+      summary: d.summary || '',
+      key_takeaways: d.key_takeaways || [],
+      decisions: d.decisions || [],
+      action_items: (d.action_items || []).map((item: any) => ({
+        text: item.task || item.text || '',
+        task: item.task || item.text || '',
+        assignee: item.assignee || null,
+        due_date: item.due_date || null,
+        status: item.completed ? 'completed' : 'pending',
+      })),
+      topics: d.topics || [],
+      prompt_tokens: d.prompt_tokens || 0,
+      completion_tokens: d.completion_tokens || 0,
+      model: d.model_name || 'llama3.2',
+    };
   }
 
   static async chunkTranscript(
     segments: Array<{ start: number; end: number; speaker?: string; text: string }>,
-    maxTokens: number = 250,
-    overlapTokens: number = 40
+    targetWords: number = 180,
+    overlapWords: number = 35
   ): Promise<ChunkResponse> {
     const res = await client.post('/chunk', {
       segments: segments.map((s) => ({
@@ -104,15 +150,22 @@ export class AiServiceClient {
         speaker: s.speaker || 'Speaker 1',
         text: s.text,
       })),
-      max_tokens: maxTokens,
-      overlap_tokens: overlapTokens,
+      target_words: targetWords,
+      overlap_words: overlapWords,
+      max_tokens: Math.round(targetWords / 0.75),
+      overlap_tokens: Math.round(overlapWords / 0.75),
     });
     return res.data;
   }
 
   static async generateEmbeddings(texts: string[]): Promise<EmbedResponse> {
     const res = await client.post('/embed', { texts });
-    return res.data;
+    return {
+      embeddings: res.data.embeddings,
+      dimension: res.data.dimension,
+      model: res.data.model_name || 'all-MiniLM-L6-v2',
+      model_name: res.data.model_name || 'all-MiniLM-L6-v2',
+    };
   }
 
   static async askQuestion(
@@ -125,27 +178,66 @@ export class AiServiceClient {
       question,
       title: title || '',
     });
-    return res.data;
+    return {
+      answer: res.data.answer || '',
+      prompt_tokens: res.data.prompt_tokens || 0,
+      completion_tokens: res.data.completion_tokens || 0,
+    };
   }
 
   static async performRag(
-    query: string,
-    chunks: Array<{
+    question: string,
+    chunksOrPassages: Array<{
       recording_id: string;
       recording_title?: string;
+      chunk_id?: string;
       start_time: number;
       end_time: number;
       speaker: string;
       text: string;
-      embedding?: number[];
+      similarity?: number;
+      score?: number;
     }>,
-    topK: number = 5
+    _topK: number = 5
   ): Promise<RagResponse> {
+    const passages = chunksOrPassages.map((c) => ({
+      recording_id: c.recording_id,
+      recording_title: c.recording_title || 'Untitled Recording',
+      chunk_id: c.chunk_id || c.recording_id,
+      start_time: c.start_time,
+      end_time: c.end_time,
+      speaker: c.speaker,
+      text: c.text,
+      score: c.score !== undefined ? c.score : c.similarity !== undefined ? c.similarity : 0.5,
+    }));
+
     const res = await client.post('/rag', {
-      query,
-      chunks,
-      top_k: topK,
+      question,
+      query: question,
+      passages,
+      chunks: passages,
     });
-    return res.data;
+
+    const d = res.data;
+    const sources =
+      d.sources ||
+      (d.citations || []).map((c: any) => ({
+        recording_id: c.recording_id,
+        recording_title: c.recording_title,
+        start_time: c.start_time,
+        end_time: c.end_time,
+        speaker: c.speaker,
+        text: c.quote,
+        similarity: c.score,
+      }));
+
+    return {
+      answer: d.answer,
+      citations: d.citations,
+      sources,
+      confidence: d.confidence ?? 0.95,
+      prompt_tokens: d.prompt_tokens || 0,
+      completion_tokens: d.completion_tokens || 0,
+    };
   }
 }

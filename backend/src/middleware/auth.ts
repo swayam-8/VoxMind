@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { HydratedDocument } from 'mongoose';
 import { TokenService } from '../services/tokenService.js';
 import { User, IUser } from '../database/models/User.js';
 import { WorkspaceMembership } from '../database/models/WorkspaceMembership.js';
@@ -8,7 +9,7 @@ import { ApiKey, IApiKey } from '../database/models/ApiKey.js';
 import { AppError } from './errorHandler.js';
 
 export interface AuthenticatedRequest extends Request {
-  user?: IUser;
+  user?: HydratedDocument<IUser>;
   workspaceId?: string;
   userRole?: string;
   apiKey?: IApiKey;

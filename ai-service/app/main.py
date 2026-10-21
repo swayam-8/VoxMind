@@ -202,12 +202,28 @@ def rag_synthesis(payload: RAGRequest):
             passages=payload.passages,
             model_name=payload.model_name,
         )
+        sources = [
+            {
+                "recording_id": c["recording_id"],
+                "recording_title": c["recording_title"],
+                "start_time": c["start_time"],
+                "end_time": c["end_time"],
+                "speaker": c["speaker"],
+                "text": c["quote"],
+                "similarity": c["score"],
+            }
+            for c in result.get("citations", [])
+        ]
         return RAGResponse(
             success=True,
             answer=result["answer"],
-            citations=result["citations"],
-            sufficient_evidence=result["sufficient_evidence"],
-            model_name=result["model_name"],
+            citations=result.get("citations", []),
+            sources=sources,
+            sufficient_evidence=result.get("sufficient_evidence", len(sources) > 0),
+            model_name=result.get("model_name", config.OLLAMA_MODEL),
+            confidence=0.95 if result.get("sufficient_evidence") else 0.2,
+            prompt_tokens=result.get("prompt_tokens", 0),
+            completion_tokens=result.get("completion_tokens", 0),
         )
     except Exception as exc:
         logger.exception("RAG error: %s", exc)

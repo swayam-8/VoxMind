@@ -288,6 +288,97 @@ class ApiClient {
     })
   }
 
+  async put<T>(endpoint: string, body?: unknown, options?: RequestInit): Promise<ApiResponse<T>> {
+    const isFormData = body instanceof FormData
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "PUT",
+      body: isFormData ? body : JSON.stringify(body),
+    })
+  }
+
+  // Authentication Domain Helpers
+  async login(
+    email: string,
+    password: string
+  ): Promise<
+    ApiResponse<{
+      access_token: string
+      accessToken: string
+      user: { id: string; email: string; fullName: string; isActive: boolean }
+      workspace: { id: string; name: string; slug: string; role: string }
+    }>
+  > {
+    const res = await this.post<{
+      access_token: string
+      accessToken: string
+      user: { id: string; email: string; fullName: string; isActive: boolean }
+      workspace: { id: string; name: string; slug: string; role: string }
+    }>("/auth/login", { email, password })
+
+    const token = res.data?.access_token || res.data?.accessToken
+    if (token) {
+      localStorage.setItem("voxmind_access_token", token)
+    }
+    return res
+  }
+
+  async register(data: {
+    email: string
+    password: string
+    fullName?: string
+  }): Promise<
+    ApiResponse<{
+      access_token: string
+      accessToken: string
+      user: { id: string; email: string; fullName: string; isActive: boolean }
+      workspace: { id: string; name: string; slug: string; role: string }
+    }>
+  > {
+    const res = await this.post<{
+      access_token: string
+      accessToken: string
+      user: { id: string; email: string; fullName: string; isActive: boolean }
+      workspace: { id: string; name: string; slug: string; role: string }
+    }>("/auth/register", data)
+
+    const token = res.data?.access_token || res.data?.accessToken
+    if (token) {
+      localStorage.setItem("voxmind_access_token", token)
+    }
+    return res
+  }
+
+  async getCurrentUser(): Promise<
+    ApiResponse<{
+      user: { id: string; email: string; fullName: string; isActive: boolean }
+      workspace: { id: string; name: string; slug: string; role: string } | null
+    }>
+  > {
+    return this.get("/auth/me")
+  }
+
+  async updateProfile(data: {
+    fullName?: string
+    currentPassword?: string
+    newPassword?: string
+  }): Promise<
+    ApiResponse<{
+      user: { id: string; email: string; fullName: string; isActive: boolean }
+      workspace: { id: string; name: string; slug: string; role: string } | null
+    }>
+  > {
+    return this.patch("/auth/me", data)
+  }
+
+  logout(): void {
+    localStorage.removeItem("voxmind_access_token")
+  }
+
+  isAuthenticated(): boolean {
+    return Boolean(localStorage.getItem("voxmind_access_token"))
+  }
+
   // Typed Domain Helpers
   async getRecordings(params?: {
     page?: number

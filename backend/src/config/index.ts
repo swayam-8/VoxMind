@@ -19,6 +19,25 @@ export interface AppConfig {
 }
 
 const nodeEnv = process.env.NODE_ENV || 'development';
+const isProduction = nodeEnv === 'production';
+
+let jwtSecret = process.env.JWT_SECRET;
+
+if (isProduction) {
+  if (
+    !jwtSecret ||
+    jwtSecret.trim() === '' ||
+    jwtSecret === 'voxmind-jwt-super-secret-key-change-in-production' ||
+    jwtSecret.length < 32
+  ) {
+    throw new Error(
+      'FATAL: JWT_SECRET environment variable is required in production and must be a secure secret of at least 32 characters.'
+    );
+  }
+} else {
+  // Explicit isolated development/testing secret
+  jwtSecret = jwtSecret || 'voxmind-dev-isolated-secret-do-not-use-in-production-min32chars';
+}
 
 export const config: AppConfig = {
   port: parseInt(process.env.PORT || '5000', 10),
@@ -26,7 +45,7 @@ export const config: AppConfig = {
   nodeEnv,
   mongoUri: process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/voxmind',
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379/0',
-  jwtSecret: process.env.JWT_SECRET || 'voxmind-jwt-super-secret-key-change-in-production',
+  jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   aiServiceUrl: process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000',
   uploadDir: process.env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads'),
