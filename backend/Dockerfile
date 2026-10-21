@@ -1,23 +1,31 @@
-FROM python:3.11-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install system dependencies including ffmpeg for audio processing
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    ffmpeg \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+COPY package*.json ./
+RUN npm ci
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY tsconfig.json ./
+COPY src/ ./src/
+RUN npm run build
 
-COPY . .
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=5000
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
+
+# Create directory for audio uploads
+RUN mkdir -p /app/uploads && chown -R node:node /app
+
+USER node
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "wsgi:app"]
+CMD ["node", "dist/server.js"]

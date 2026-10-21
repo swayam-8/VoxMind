@@ -1,19 +1,15 @@
 services:
-  # Primary Database with Vector Support
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: voxmind-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-voxmind_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voxmind_password}
-      POSTGRES_DB: ${POSTGRES_DB:-voxmind_db}
+  # Primary Document Database
+  mongo:
+    image: mongo:7.0
+    container_name: voxmind-mongo
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voxmind_user} -d ${POSTGRES_DB:-voxmind_db}"]
-      interval: 5s
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
@@ -33,75 +29,65 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Flask REST API Backend
+  # Python Local AI Microservice (faster-whisper, sentence-transformers, Ollama client)
+  ai_service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: voxmind-ai-service
+    environment:
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - EMBEDDING_DEVICE=cpu
+    ports:
+      - "8000:8000"
+    volumes:
+      - storage_data:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Node.js + Express + BullMQ Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: voxmind-backend
     environment:
-      - FLASK_ENV=production
-      - SECRET_KEY=${SECRET_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-voxmind_user}:${POSTGRES_PASSWORD:-voxmind_password}@postgres:5432/${POSTGRES_DB:-voxmind_db}
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/voxmind
       - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
-      - EMBEDDING_DIMENSION=384
-      - EMBEDDING_DEVICE=cpu
-      - WHISPER_MODEL=${WHISPER_MODEL:-base}
-      - WHISPER_DEVICE=cpu
+      - JWT_SECRET=${JWT_SECRET:-voxmind-jwt-super-secret-key-change-in-production}
+      - AI_SERVICE_URL=http://ai_service:8000
+      - UPLOAD_DIR=/app/storage/uploads
+      - CORS_ORIGIN=http://localhost:5173
     ports:
       - "5000:5000"
     volumes:
       - storage_data:/app/storage
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
+      ai_service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  # Celery Asynchronous Worker
-  celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: voxmind-celery
-    command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2 -Ofair
-    environment:
-      - FLASK_ENV=production
-      - SECRET_KEY=${SECRET_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-voxmind_user}:${POSTGRES_PASSWORD:-voxmind_password}@postgres:5432/${POSTGRES_DB:-voxmind_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_CONCURRENCY=2
-      - CELERY_WORKER_PREFETCH_MULTIPLIER=1
-      - CELERY_TASK_TIME_LIMIT=1800
-      - CELERY_TASK_SOFT_TIME_LIMIT=1500
-      - WHISPER_MODEL=${WHISPER_MODEL:-base}
-      - WHISPER_DEVICE=cpu
-      - WHISPER_COMPUTE_TYPE=int8
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
-      - EMBEDDING_DIMENSION=384
-      - EMBEDDING_DEVICE=cpu
-    volumes:
-      - storage_data:/app/storage
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Frontend Web Client
+  # Frontend React Web Client
   frontend:
     build:
       context: ./frontend
@@ -114,6 +100,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  mongo_data:
   redis_data:
   storage_data:
