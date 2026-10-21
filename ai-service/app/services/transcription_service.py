@@ -8,6 +8,19 @@ from app import config
 
 logger = logging.getLogger(__name__)
 
+# Compatibility patch for PyAV 14+ with faster-whisper (removes deprecated metadata_errors kwarg)
+try:
+    import av
+    _original_av_open = av.open
+
+    def _safe_av_open(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _original_av_open(*args, **kwargs)
+
+    av.open = _safe_av_open
+except Exception as _patch_err:
+    logger.debug("PyAV compatibility patch not applied: %s", _patch_err)
+
 
 class TranscriptionServiceError(Exception):
     """Raised when speech transcription fails."""
