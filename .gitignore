@@ -67,3 +67,6 @@ Thumbs.db
 
 # Docker
 *.docker.log
+
+# Flask Backend Backup
+backend-flask/
