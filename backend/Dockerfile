@@ -21,8 +21,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 
-# Create directory for audio uploads
-RUN mkdir -p /app/uploads && chown -R node:node /app
+# Create directories for audio uploads and storage
+RUN mkdir -p /app/storage/uploads /app/uploads && chown -R node:node /app
 
 USER node
 
