@@ -14,28 +14,28 @@ export function Header({ onToggleSidebar, title = "Overview" }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-surface-1/95 px-4 backdrop-blur-xs">
+      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-surface-1/95 px-3 sm:px-4 backdrop-blur-xs min-w-0">
         {/* Left side: Hamburger & Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="md:hidden h-8 w-8 text-text-secondary"
+            className="md:hidden h-8 w-8 text-text-secondary shrink-0"
             aria-label="Open navigation sidebar"
           >
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm font-semibold text-text-primary tracking-tight">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-sm font-semibold text-text-primary tracking-tight truncate max-w-[130px] xs:max-w-[180px] sm:max-w-xs md:max-w-md">
               {title}
             </h1>
           </div>
         </div>
 
         {/* Center: Global Search Entry Point */}
-        <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
+        <div className="hidden md:flex items-center flex-1 max-w-md mx-4 lg:mx-6">
           <button
             onClick={() => setSearchOpen(true)}
             className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg border border-border bg-surface-2/70 text-xs text-text-muted hover:border-accent/40 hover:text-text-secondary transition-colors cursor-pointer select-none"
@@ -51,7 +51,7 @@ export function Header({ onToggleSidebar, title = "Overview" }: HeaderProps) {
         </div>
 
         {/* Right side: Indicators & Theme Toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Mobile search trigger */}
           <Button
             variant="ghost"

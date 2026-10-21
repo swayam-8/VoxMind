@@ -264,12 +264,12 @@ export function AskPage() {
             messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex flex-col ${
+                className={`flex flex-col min-w-0 ${
                   msg.sender === "user" ? "items-end" : "items-start"
                 }`}
               >
                 <div
-                  className={`max-w-2xl rounded-xl p-4 space-y-2 ${
+                  className={`w-full max-w-full sm:max-w-2xl rounded-xl p-3.5 sm:p-4 space-y-2 min-w-0 ${
                     msg.sender === "user"
                       ? "bg-accent text-accent-foreground shadow-sm"
                       : "bg-surface-1 border border-border shadow-xs text-text-primary"
@@ -282,38 +282,38 @@ export function AskPage() {
                     <span>{msg.createdAt}</span>
                   </div>
 
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
 
                   {/* Insufficient Evidence Notice */}
                   {msg.sender === "assistant" && msg.sufficientEvidence === false && (
                     <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-400 flex items-center gap-1.5">
                       <XCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>No matching verified evidence was found in the selected recordings.</span>
+                      <span className="break-words">No matching verified evidence was found in the selected recordings.</span>
                     </div>
                   )}
 
                   {/* Evidence Panel with Timestamp Links */}
                   {msg.evidence && msg.evidence.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-left">
+                    <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-left min-w-0">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accent uppercase tracking-wider">
-                        <HelpCircle className="w-3.5 h-3.5" />
+                        <HelpCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>Verified Audio Evidence ({msg.evidence.length})</span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 min-w-0">
                         {msg.evidence.map((ev, idx) => (
                           <div
                             key={idx}
-                            className="p-2.5 rounded-md bg-surface-2/70 border border-border text-xs space-y-1"
+                            className="p-2.5 rounded-md bg-surface-2/70 border border-border text-xs space-y-1 min-w-0"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-text-primary truncate flex items-center gap-1">
-                                <Mic className="w-3 h-3 text-accent" />
-                                {ev.recordingTitle}
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                              <span className="font-medium text-text-primary truncate flex items-center gap-1 min-w-0">
+                                <Mic className="w-3 h-3 text-accent shrink-0" />
+                                <span className="truncate">{ev.recordingTitle}</span>
                               </span>
                               <Link
                                 to={`/app/recordings/${ev.recordingId}?t=${ev.timestampSeconds}`}
-                                className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors"
+                                className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors shrink-0"
                                 title="Listen to exact audio snippet"
                               >
                                 <Clock className="w-3 h-3" />
@@ -321,7 +321,7 @@ export function AskPage() {
                                 <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
                               </Link>
                             </div>
-                            <p className="italic text-text-secondary">
+                            <p className="italic text-text-secondary break-words">
                               "{ev.quote}"
                             </p>
                           </div>

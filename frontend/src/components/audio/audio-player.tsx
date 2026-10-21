@@ -95,22 +95,22 @@ export function AudioPlayer({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-surface-1 p-4 sm:p-5 shadow-sm space-y-4",
+        "rounded-xl border border-border bg-surface-1 p-3.5 sm:p-5 shadow-sm space-y-3 sm:space-y-4 min-w-0 max-w-full",
         className
       )}
     >
       {/* Title & Status */}
       {title && (
-        <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
-          <div className="min-w-0">
-            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+        <div className="flex items-center justify-between border-b border-border/50 pb-2.5 gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
+            <h4 className="text-[10px] sm:text-xs font-semibold text-text-muted uppercase tracking-wider">
               Audio Playback Channel
             </h4>
-            <p className="text-sm font-medium text-text-primary truncate mt-0.5">
+            <p className="text-xs sm:text-sm font-medium text-text-primary truncate mt-0.5">
               {title}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-mono text-text-secondary shrink-0">
             <span>{formatTime(currentTime)}</span>
             <span>/</span>
             <span>{formatTime(durationSeconds)}</span>
@@ -122,7 +122,7 @@ export function AudioPlayer({
       <div
         ref={progressBarRef}
         onClick={handleProgressBarClick}
-        className="group relative h-16 w-full cursor-pointer flex items-end justify-between gap-1 px-1 select-none overflow-hidden rounded-md bg-surface-2/60 border border-border/40 py-2 hover:border-accent/40 transition-colors"
+        className="group relative h-12 sm:h-16 w-full cursor-pointer flex items-end justify-between gap-0.5 sm:gap-1 px-1 select-none overflow-hidden rounded-md bg-surface-2/60 border border-border/40 py-2 hover:border-accent/40 transition-colors"
         title="Click or drag to seek in recording"
       >
         {WAVEFORM_HEIGHTS.map((height, idx) => {
@@ -157,9 +157,9 @@ export function AudioPlayer({
       </div>
 
       {/* Playback Controls Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
         {/* Play / Skip Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -167,20 +167,20 @@ export function AudioPlayer({
             className="h-8 w-8 text-text-secondary hover:text-text-primary"
             aria-label="Skip backward 10 seconds"
           >
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
 
           <Button
             variant="default"
             size="icon"
             onClick={onTogglePlay}
-            className="h-10 w-10 rounded-full shadow-md"
+            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full shadow-md"
             aria-label={isPlaying ? "Pause playback" : "Play audio recording"}
           >
             {isPlaying ? (
-              <Pause className="h-5 w-5 fill-current" />
+              <Pause className="h-4 w-4 sm:h-5 sm:w-5 fill-current" />
             ) : (
-              <Play className="h-5 w-5 fill-current ml-0.5" />
+              <Play className="h-4 w-4 sm:h-5 sm:w-5 fill-current ml-0.5" />
             )}
           </Button>
 
@@ -191,22 +191,22 @@ export function AudioPlayer({
             className="h-8 w-8 text-text-secondary hover:text-text-primary"
             aria-label="Skip forward 10 seconds"
           >
-            <RotateCw className="h-4 w-4" />
+            <RotateCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
 
-          <span className="text-xs font-mono text-text-muted hidden sm:inline ml-2">
+          <span className="text-[11px] font-mono text-text-muted hidden md:inline ml-2">
             Space to {isPlaying ? "pause" : "play"}
           </span>
         </div>
 
         {/* Speed & Volume Tools */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-8 px-2.5 font-mono text-xs text-text-primary"
+                className="h-8 px-2 sm:px-2.5 font-mono text-xs text-text-primary"
               >
                 {internalRate}x
               </Button>

@@ -229,9 +229,9 @@ export function CollectionsPage() {
 
       {/* Create Collection Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md border-border bg-surface-1">
+        <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full border-border bg-surface-1 p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Create New Collection</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Create New Collection</DialogTitle>
             <DialogDescription>
               Group related meetings, interviews, or project voice memos.
             </DialogDescription>

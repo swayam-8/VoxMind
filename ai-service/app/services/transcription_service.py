@@ -110,6 +110,7 @@ class TranscriptionService:
             segments_gen, info = model.transcribe(
                 audio_path,
                 beam_size=5,
+                task="transcribe",
                 language=configured_language,
                 vad_filter=vad_filter,
                 vad_parameters=dict(min_silence_duration_ms=600),

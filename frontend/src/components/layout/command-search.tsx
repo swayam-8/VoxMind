@@ -73,7 +73,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden border-border bg-surface-1 shadow-2xl">
+      <DialogContent className="max-w-xl w-[calc(100vw-2rem)] sm:w-full p-0 overflow-hidden border-border bg-surface-1 shadow-2xl">
         <DialogTitle className="sr-only">Quick Search Palette</DialogTitle>
         <DialogDescription className="sr-only">
           Search across recordings, transcripts, and semantic audio passages

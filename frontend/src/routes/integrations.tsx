@@ -267,7 +267,7 @@ console.log("Job status:", result.data.status);`
                       {key.is_revoked ? "revoked" : "active"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-text-muted font-mono">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted font-mono">
                     <span className="bg-surface-1 px-2 py-0.5 rounded border border-border">
                       {key.key_prefix}
                     </span>
@@ -372,9 +372,9 @@ console.log("Job status:", result.data.status);`
 
       {/* Generate API Key Modal Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-md border-border bg-surface-1">
+        <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full border-border bg-surface-1 p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               {generatedKey ? "Save Your Secret Key" : "Generate API Access Key"}
             </DialogTitle>
             <DialogDescription>

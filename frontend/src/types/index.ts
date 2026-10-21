@@ -75,6 +75,7 @@ export interface Recording {
   durationSeconds: number
   mimeType: string
   status: RecordingStatus
+  language?: string | null
   errorMessage?: string | null
   collectionId?: string | null
   collection?: Collection | null

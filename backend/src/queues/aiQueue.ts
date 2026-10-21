@@ -71,17 +71,23 @@ export function startAiWorker(): Worker<AiJobData> {
           await Summary.findOneAndUpdate(
             { recordingId },
             {
-              recordingId,
-              modelName: analysis.model || 'llama3.2',
-              summaryMarkdown: analysis.summary,
-              keyTakeaways: analysis.key_takeaways || [],
-              decisions: analysis.decisions || [],
-              topics: analysis.topics || [],
-              actionItems: analysis.action_items || [],
-              promptTokens: analysis.prompt_tokens || 0,
-              completionTokens: analysis.completion_tokens || 0,
+              $set: {
+                recordingId,
+                modelName: analysis.model || 'llama3.2',
+                summaryMarkdown: analysis.summary,
+                keyTakeaways: (analysis.key_takeaways || []).slice(0, 8),
+                decisions: analysis.decisions || [],
+                topics: analysis.topics || [],
+                actionItems: analysis.action_items || [],
+                promptTokens: analysis.prompt_tokens || 0,
+                completionTokens: analysis.completion_tokens || 0,
+                updatedAt: new Date(),
+              },
+              $setOnInsert: {
+                createdAt: new Date(),
+              },
             },
-            { upsert: true, new: true }
+            { upsert: true, new: true, setDefaultsOnInsert: true }
           );
 
           // Save ActionItems if present

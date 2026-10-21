@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   Target,
   Database,
+  Globe,
+  Radio,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +34,32 @@ function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+}
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  hi: "Hindi (हिन्दी)",
+  pa: "Punjabi (ਪੰਜਾਬੀ)",
+  en: "English",
+  es: "Spanish (Español)",
+  fr: "French (Français)",
+  de: "German (Deutsch)",
+  zh: "Mandarin Chinese (中文)",
+  ja: "Japanese (日本語)",
+  ar: "Arabic (العربية)",
+  pt: "Portuguese (Português)",
+  ru: "Russian (Русский)",
+  it: "Italian (Italiano)",
+  bn: "Bengali (বাংলা)",
+  mr: "Marathi (मराठी)",
+  ta: "Tamil (தமிழ்)",
+  te: "Telugu (తెలుగు)",
+  ur: "Urdu (اردو)",
+}
+
+function getLanguageLabel(code?: string | null): string {
+  if (!code) return "Auto-Detected"
+  const c = code.toLowerCase().trim()
+  return LANGUAGE_NAMES[c] || `Native (${code.toUpperCase()})`
 }
 
 export function RecordingDetailPage() {
@@ -164,8 +192,19 @@ export function RecordingDetailPage() {
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1.0)
   const [transcriptSearch, setTranscriptSearch] = useState("")
+  const [autoScroll, setAutoScroll] = useState(true)
 
   const activeSegmentRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll active segment into view when audio is playing
+  useEffect(() => {
+    if (autoScroll && isPlaying && activeSegmentRef.current) {
+      activeSegmentRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      })
+    }
+  }, [currentTime, autoScroll, isPlaying])
 
   // Simulation timer for playback progress
   useEffect(() => {
@@ -247,7 +286,7 @@ export function RecordingDetailPage() {
 
   if (isError || !recording) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-danger/30 bg-surface-1">
+      <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-xl border border-danger/30 bg-surface-1">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-subtle text-danger border border-danger/20 mb-3">
           <AlertCircle className="h-6 w-6" />
         </div>
@@ -257,7 +296,7 @@ export function RecordingDetailPage() {
         <p className="max-w-sm mt-1 text-xs text-text-secondary">
           {error instanceof Error ? error.message : "The requested audio recording could not be retrieved from the database."}
         </p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 justify-center">
           <Link to="/app/recordings">
             <Button variant="secondary" size="sm">
               <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Return to Library
@@ -282,11 +321,11 @@ export function RecordingDetailPage() {
   const actionItems = recording.action_items || []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6 min-w-0 max-w-full">
       {/* Top Navigation & Actions Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
-          <Link to="/app/recordings">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 border-b border-border pb-4">
+        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+          <Link to="/app/recordings" className="shrink-0 mt-0.5 sm:mt-0">
             <Button
               variant="outline"
               size="icon"
@@ -296,9 +335,9 @@ export function RecordingDetailPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold tracking-tight text-text-primary truncate">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-text-primary truncate max-w-full">
                 {recording.title}
               </h1>
               {(recording.status === "ready" || recording.status === "completed") && (
@@ -313,6 +352,12 @@ export function RecordingDetailPage() {
               {recording.status === "failed" && (
                 <Badge variant="danger" className="text-[10px]">Failed</Badge>
               )}
+
+              {/* Native Language Badge */}
+              <Badge variant="outline" className="text-[10px] font-mono flex items-center gap-1 border-accent/30 text-accent">
+                <Globe className="w-3 h-3" />
+                {getLanguageLabel(recording.language)}
+              </Badge>
 
               {/* Vector Indexing Status */}
               {recording.index_status === "completed" && (
@@ -331,7 +376,7 @@ export function RecordingDetailPage() {
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted mt-1">
               {recording.collection_name && (
                 <>
                   <span className="flex items-center gap-1 text-text-secondary">
@@ -346,35 +391,35 @@ export function RecordingDetailPage() {
                 {new Date(recording.created_at).toLocaleDateString()}
               </span>
               <span>•</span>
-              <span className="font-mono text-[11px] text-text-muted">
+              <span className="font-mono text-[11px] text-text-muted truncate max-w-[160px] sm:max-w-xs">
                 {recording.filename}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={() => reindexMutation.mutate()}
             disabled={reindexMutation.isPending || segments.length === 0}
-            className="text-xs"
-            title="Re-chunk transcript and re-generate pgvector embeddings"
+            className="text-xs h-8"
+            title="Re-chunk transcript and re-generate embeddings"
           >
             <Database className="w-3.5 h-3.5 mr-1.5 text-accent" />
-            {reindexMutation.isPending ? "Indexing..." : "Re-index Vectors"}
+            <span className="hidden xs:inline">Re-index</span> Vectors
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={copyTranscriptToClipboard}
-            className="text-xs"
+            className="text-xs h-8"
             disabled={segments.length === 0}
           >
             <Copy className="w-3.5 h-3.5 mr-1.5" />
-            Copy Full Transcript
+            Copy <span className="hidden xs:inline">Transcript</span>
           </Button>
 
           <Button
@@ -387,10 +432,10 @@ export function RecordingDetailPage() {
                 variant: "default",
               })
             }
-            className="text-xs"
+            className="text-xs h-8"
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
-            Export Markdown
+            Export <span className="hidden xs:inline">Markdown</span>
           </Button>
         </div>
       </div>
@@ -398,11 +443,11 @@ export function RecordingDetailPage() {
       {/* Live Processing and Failure State Alerts */}
       {recording.status === "failed" && (
         <div className="p-4 rounded-xl border border-danger/30 bg-danger-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <AlertCircle className="w-5 h-5 text-danger shrink-0" />
-            <div>
+            <div className="min-w-0">
               <h4 className="text-xs font-semibold text-danger">Transcription Failed</h4>
-              <p className="text-xs text-text-secondary mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5 break-words">
                 {recording.error_message || "An unexpected error occurred during audio transcription."}
               </p>
             </div>
@@ -412,7 +457,7 @@ export function RecordingDetailPage() {
             size="sm"
             onClick={() => retryMutation.mutate()}
             isLoading={retryMutation.isPending}
-            className="text-xs text-danger border-danger/40 hover:bg-danger/10 shrink-0"
+            className="text-xs text-danger border-danger/40 hover:bg-danger/10 shrink-0 self-end sm:self-center"
           >
             <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry Transcription
           </Button>
@@ -423,7 +468,7 @@ export function RecordingDetailPage() {
         <div className="p-3.5 rounded-xl border border-border bg-surface-2/60 flex items-center gap-3">
           <Clock className="w-4 h-4 text-text-muted shrink-0" />
           <p className="text-xs text-text-secondary">
-            Recording is currently <strong>queued</strong> in Celery background queue. Local faster-whisper transcription will begin automatically.
+            Recording is queued for background processing. Local faster-whisper transcription will begin automatically.
           </p>
         </div>
       )}
@@ -432,15 +477,15 @@ export function RecordingDetailPage() {
         <div className="p-3.5 rounded-xl border border-accent/30 bg-accent-subtle/50 flex items-center gap-3">
           <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
           <p className="text-xs text-text-primary">
-            Transcribing speech locally with <strong>faster-whisper</strong>... Live timestamped dialogue segments will appear automatically.
+            Transcribing speech locally with <strong>faster-whisper</strong> in its native language... Live timestamped dialogue segments will appear automatically.
           </p>
         </div>
       )}
 
       {/* Main 2-Column Responsive Workspace Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
         {/* Left Column: Player & Transcript (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-5 sm:space-y-6 min-w-0">
           {/* Interactive Audio Player */}
           <AudioPlayer
             title={recording.title}
@@ -454,32 +499,54 @@ export function RecordingDetailPage() {
           />
 
           {/* Interactive Timestamped Transcript Panel */}
-          <div className="rounded-xl border border-border bg-surface-1 p-5 shadow-sm space-y-4">
+          <div className="rounded-xl border border-border bg-surface-1 p-4 sm:p-5 shadow-sm space-y-4 min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
               <div>
                 <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-accent" />
-                  Synchronized Transcript
+                  <Layers className="h-4 w-4 text-accent shrink-0" />
+                  <span>Synchronized Transcript</span>
+                  {recording.language && (
+                    <span className="text-xs font-normal text-text-muted">
+                      ({getLanguageLabel(recording.language)})
+                    </span>
+                  )}
                 </h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Click any timestamp to seek playback
                 </p>
               </div>
 
-              {/* In-Transcript Search */}
-              <div className="relative w-full sm:w-60">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-muted" />
-                <Input
-                  placeholder="Filter dialogue..."
-                  value={transcriptSearch}
-                  onChange={(e) => setTranscriptSearch(e.target.value)}
-                  className="pl-8 h-8 text-xs bg-surface-2"
-                />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Auto-scroll toggle */}
+                <button
+                  type="button"
+                  onClick={() => setAutoScroll(!autoScroll)}
+                  className={`px-2 py-1 rounded text-[11px] font-mono border transition-colors flex items-center gap-1 ${
+                    autoScroll
+                      ? "bg-accent-subtle text-accent border-accent/30"
+                      : "bg-surface-2 text-text-muted border-border"
+                  }`}
+                  title="Toggle auto-scroll with audio playback"
+                >
+                  <Radio className="w-3 h-3" />
+                  <span>Auto-scroll</span>
+                </button>
+
+                {/* In-Transcript Search */}
+                <div className="relative flex-1 sm:w-52">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-muted" />
+                  <Input
+                    placeholder="Filter dialogue..."
+                    value={transcriptSearch}
+                    onChange={(e) => setTranscriptSearch(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-surface-2"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Segments Scroll Container */}
-            <div className="max-h-[500px] overflow-y-auto space-y-3 pr-2 divide-y divide-border/30">
+            <div className="max-h-[500px] overflow-y-auto space-y-3 pr-1 sm:pr-2 divide-y divide-border/30">
               {segments.length === 0 ? (
                 <div className="py-12 text-center text-xs text-text-muted space-y-2">
                   {recording.status === "failed" ? (
@@ -510,32 +577,32 @@ export function RecordingDetailPage() {
                     <div
                       key={seg.id}
                       ref={isActive ? activeSegmentRef : undefined}
-                      className={`pt-3 transition-colors rounded-lg p-2.5 -mx-1.5 ${
+                      className={`pt-3 transition-colors rounded-lg p-2.5 -mx-1 sm:-mx-1.5 ${
                         isActive
-                          ? "bg-accent-subtle/70 border border-accent/30 shadow-xs"
+                          ? "bg-accent-subtle/80 border border-accent/40 shadow-xs ring-1 ring-accent/20"
                           : "hover:bg-surface-2/60 border border-transparent"
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <button
                             onClick={() => handleSeek(sTime)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-surface-2 text-accent border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-surface-2 text-accent border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all cursor-pointer shrink-0"
                             title="Jump audio to this timestamp"
                           >
                             <Clock className="w-3 h-3" />
                             {formatTimestamp(sTime)}
                           </button>
-                          <span className="text-xs font-semibold text-text-primary">
+                          <span className="text-xs font-semibold text-text-primary truncate">
                             {seg.speaker}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono text-text-muted">
+                        <span className="text-[10px] font-mono text-text-muted shrink-0">
                           {(conf * 100).toFixed(0)}% conf
                         </span>
                       </div>
 
-                      <p className="text-sm text-text-secondary leading-relaxed pl-1">
+                      <p className="text-sm text-text-secondary leading-relaxed pl-1 break-words font-sans">
                         {seg.text}
                       </p>
                     </div>
@@ -547,15 +614,15 @@ export function RecordingDetailPage() {
         </div>
 
         {/* Right Column: AI Insights Hub (5 cols) */}
-        <div className="lg:col-span-5 rounded-xl border border-border bg-surface-1 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-border/50 pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-accent" />
-              <h3 className="text-sm font-semibold text-text-primary">
+        <div className="lg:col-span-5 rounded-xl border border-border bg-surface-1 p-4 sm:p-5 shadow-sm space-y-4 min-w-0">
+          <div className="flex items-center justify-between border-b border-border/50 pb-3 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="h-4 w-4 text-accent shrink-0" />
+              <h3 className="text-sm font-semibold text-text-primary truncate">
                 Voice Intelligence
               </h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Badge variant="violet" className="text-[10px] font-mono">
                 {summary?.model_name || "llama3.2"}
               </Badge>
@@ -585,7 +652,7 @@ export function RecordingDetailPage() {
           {/* Analysis Failed State */}
           {summary?.status === "failed" && (
             <div className="p-3 rounded-lg bg-danger-subtle border border-danger/30 flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5 text-danger">
+              <div className="flex items-center gap-1.5 text-danger min-w-0">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span className="truncate">{summary.error_message || "Analysis failed."}</span>
               </div>
@@ -601,11 +668,11 @@ export function RecordingDetailPage() {
           )}
 
           <Tabs defaultValue="summary" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="decisions">Decisions</TabsTrigger>
-              <TabsTrigger value="actions">Actions</TabsTrigger>
-              <TabsTrigger value="ask">Ask AI</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4 h-9 p-1 text-xs">
+              <TabsTrigger value="summary" className="text-[11px] sm:text-xs">Summary</TabsTrigger>
+              <TabsTrigger value="decisions" className="text-[11px] sm:text-xs">Decisions</TabsTrigger>
+              <TabsTrigger value="actions" className="text-[11px] sm:text-xs">Actions</TabsTrigger>
+              <TabsTrigger value="ask" className="text-[11px] sm:text-xs">Ask AI</TabsTrigger>
             </TabsList>
 
             {/* Tab 1: Executive Summary & Takeaways */}
@@ -614,7 +681,7 @@ export function RecordingDetailPage() {
                 <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                   Executive Briefing
                 </h4>
-                <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line break-words">
                   {summary?.summary_markdown || "Summary pending analysis completion."}
                 </p>
               </div>
@@ -631,7 +698,7 @@ export function RecordingDetailPage() {
                         className="flex items-start gap-2 p-2 rounded-lg bg-surface-2/40 border border-border/40 text-xs text-text-secondary"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
-                        <p className="leading-relaxed">{point}</p>
+                        <p className="leading-relaxed break-words">{point}</p>
                       </div>
                     ))}
                   </div>
@@ -669,9 +736,9 @@ export function RecordingDetailPage() {
                       className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-2 hover:border-accent/40 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-1.5">
+                        <div className="flex items-start gap-1.5 min-w-0">
                           <Target className="w-3.5 h-3.5 text-accent mt-0.5 shrink-0" />
-                          <h5 className="text-xs font-bold text-text-primary leading-snug">
+                          <h5 className="text-xs font-bold text-text-primary leading-snug break-words">
                             {dec.decision}
                           </h5>
                         </div>
@@ -686,7 +753,7 @@ export function RecordingDetailPage() {
                         )}
                       </div>
                       {dec.context && (
-                        <p className="text-xs text-text-secondary leading-relaxed pl-5">
+                        <p className="text-xs text-text-secondary leading-relaxed pl-5 break-words">
                           {dec.context}
                         </p>
                       )}
@@ -724,11 +791,11 @@ export function RecordingDetailPage() {
                               completed: !act.completed,
                             })
                           }
-                          className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent accent-accent cursor-pointer"
+                          className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent accent-accent cursor-pointer shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <p
-                            className={`text-xs font-semibold leading-snug ${
+                            className={`text-xs font-semibold leading-snug break-words ${
                               act.completed
                                 ? "line-through text-text-muted"
                                 : "text-text-primary"
@@ -739,15 +806,15 @@ export function RecordingDetailPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-text-muted pt-1 border-t border-border/40">
-                        <span className="text-text-secondary font-medium">
+                      <div className="flex items-center justify-between text-[11px] text-text-muted pt-1 border-t border-border/40 gap-2">
+                        <span className="text-text-secondary font-medium truncate">
                           Assignee: {act.assignee || "Unassigned"}
                         </span>
                         {ts !== undefined && ts !== null && (
                           <button
                             type="button"
                             onClick={() => handleSeek(Number(ts))}
-                            className="px-1.5 py-0.5 rounded font-mono text-[10px] text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer"
+                            className="px-1.5 py-0.5 rounded font-mono text-[10px] text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer shrink-0"
                             title="Seek to audio where task was assigned"
                           >
                             [{formatTimestamp(Number(ts))}]
@@ -774,7 +841,7 @@ export function RecordingDetailPage() {
                       }
                     }}
                     disabled={askMutation.isPending}
-                    className="h-8 text-xs bg-surface-2"
+                    className="h-8 text-xs bg-surface-2 flex-1"
                   />
                   <Button
                     variant="default"
@@ -807,7 +874,7 @@ export function RecordingDetailPage() {
                       {qaResult.supported_by_transcript ? "Supported by Transcript" : "Not Found"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-text-secondary leading-relaxed">
+                  <p className="text-xs text-text-secondary leading-relaxed break-words">
                     {qaResult.answer}
                   </p>
                   {qaResult.timestamps && qaResult.timestamps.length > 0 && (

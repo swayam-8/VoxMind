@@ -76,6 +76,7 @@ export interface ApiRecording {
   duration_seconds: number
   mime_type: string
   status: "queued" | "processing" | "transcribing" | "summarizing" | "completed" | "ready" | "failed"
+  language?: string | null
   index_status?: "pending" | "indexing" | "completed" | "failed"
   indexed_at?: string | null
   index_error?: string | null

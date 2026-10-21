@@ -168,14 +168,47 @@ class OllamaService:
         return cleaned.strip()
 
     @classmethod
-    def _validate_and_normalize_insights(cls, raw_json_str: str) -> Dict[str, Any]:
-        """Parse and strictly validate raw JSON from Ollama against the expected schema."""
-        cleaned = cls._clean_json_markdown(raw_json_str)
+    def _repair_json(cls, raw: str) -> Optional[Dict[str, Any]]:
+        """Attempt to repair incomplete or cut-off JSON from LLMs."""
+        cleaned = cls._clean_json_markdown(raw)
         try:
             parsed = json.loads(cleaned)
-        except json.JSONDecodeError as err:
-            logger.warning("Failed to decode Ollama JSON: %s. Raw preview: %s", err, cleaned[:200])
-            raise OllamaValidationError(f"Invalid JSON returned by Ollama: {str(err)}") from err
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+
+        # Try appending quotes/brackets/braces
+        for suffix in ['"', '"}', '"]}', '"}]}', ']}', '}']:
+            try:
+                parsed = json.loads(cleaned + suffix)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                pass
+
+        # Try trimming back to last comma or brace
+        for cut_char in [',', '\n', '}']:
+            last_idx = cleaned.rfind(cut_char)
+            if last_idx > 20:
+                truncated = cleaned[:last_idx].rstrip().rstrip(',')
+                for suffix in ['}', ']}', '"}]}', ']}']:
+                    try:
+                        parsed = json.loads(truncated + suffix)
+                        if isinstance(parsed, dict):
+                            return parsed
+                    except Exception:
+                        pass
+        return None
+
+    @classmethod
+    def _validate_and_normalize_insights(cls, raw_json_str: str) -> Dict[str, Any]:
+        """Parse and strictly validate raw JSON from Ollama against the expected schema."""
+        parsed = cls._repair_json(raw_json_str)
+        if not parsed:
+            cleaned = cls._clean_json_markdown(raw_json_str)
+            logger.warning("Failed to decode Ollama JSON. Raw preview: %s", cleaned[:200])
+            raise OllamaValidationError(f"Invalid JSON returned by Ollama: output could not be parsed.")
 
         if not isinstance(parsed, dict):
             raise OllamaValidationError("Root output from Ollama must be a JSON object.")
@@ -238,15 +271,15 @@ class OllamaService:
 
         system_prompt = (
             "You are VoxMind AI, an elite voice intelligence assistant.\n"
-            "Analyze the meeting dialogue transcript and return ONLY a valid JSON object matching this schema:\n"
+            "Analyze the meeting dialogue transcript and return ONLY a valid, complete JSON object matching this schema:\n"
             "{\n"
             '  "summary": "Concise executive overview in markdown format",\n'
-            '  "key_takeaways": ["Bulleted takeaways"],\n'
+            '  "key_takeaways": ["1 to 4 bulleted takeaways"],\n'
             '  "decisions": [{"decision": "Agreed decision", "context": "Rationale", "source_timestamp": 12.5}],\n'
             '  "action_items": [{"task": "Task description", "assignee": "Name or null", "due_date": "Date or null", "completed": false, "source_timestamp": 45.0}],\n'
-            '  "topics": ["Keyword / Topic"]\n'
+            '  "topics": ["1 to 4 keywords"]\n'
             "}\n"
-            "Ground all insights strictly in the transcript. Do not fabricate facts."
+            "Keep the output concise. Maximum 4 takeaways, 3 decisions, 3 action items. Do not repeat items."
         )
 
         user_prompt = f"Transcript:\n---\n{clipped_transcript}\n---\nGenerate the structured JSON analysis."

@@ -180,25 +180,25 @@ export function RecordingsPage() {
       </div>
 
       {/* Filter and Control Bar */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-surface-1 p-3.5 rounded-xl border border-border">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-surface-1 p-3 sm:p-3.5 rounded-xl border border-border min-w-0">
         {/* Search Input */}
-        <div className="relative flex-1 min-w-[240px]">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
           <Input
             placeholder="Search by title or filename..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-surface-2 border-border text-xs"
+            className="pl-9 bg-surface-2 border-border text-xs w-full"
           />
         </div>
 
         {/* Filter Dropdowns & View Mode */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Status Filter */}
-          <div className="w-36">
+          <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-36">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 text-xs">
-                <Filter className="w-3 h-3 mr-1 text-text-muted" />
+              <SelectTrigger className="h-9 text-xs w-full">
+                <Filter className="w-3 h-3 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -212,7 +212,7 @@ export function RecordingsPage() {
           </div>
 
           {/* Collection Filter */}
-          <div className="w-40">
+          <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-40">
             <Select
               value={collectionFilter}
               onValueChange={(val) => {
@@ -225,8 +225,8 @@ export function RecordingsPage() {
                 setSearchParams(next)
               }}
             >
-              <SelectTrigger className="h-9 text-xs">
-                <FolderOpen className="w-3 h-3 mr-1 text-text-muted" />
+              <SelectTrigger className="h-9 text-xs w-full">
+                <FolderOpen className="w-3 h-3 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Collection" />
               </SelectTrigger>
               <SelectContent>
@@ -241,7 +241,7 @@ export function RecordingsPage() {
           </div>
 
           {/* Sort Control */}
-          <div className="w-36">
+          <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-36">
             <Select
               value={sortBy}
               onValueChange={(val) => {
@@ -249,8 +249,8 @@ export function RecordingsPage() {
                 setOrder(val === "title" ? "asc" : "desc")
               }}
             >
-              <SelectTrigger className="h-9 text-xs">
-                <ArrowUpDown className="w-3 h-3 mr-1 text-text-muted" />
+              <SelectTrigger className="h-9 text-xs w-full">
+                <ArrowUpDown className="w-3 h-3 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -263,7 +263,7 @@ export function RecordingsPage() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center border border-border rounded-md p-0.5 bg-surface-2">
+          <div className="flex items-center border border-border rounded-md p-0.5 bg-surface-2 ml-auto xs:ml-0">
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon"
@@ -527,9 +527,9 @@ export function RecordingsPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="max-w-md border-border bg-surface-1">
+        <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full border-border bg-surface-1 p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Delete Audio Recording?</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Delete Audio Recording?</DialogTitle>
             <DialogDescription>
               Are you sure you want to permanently delete "{deleteTarget?.title}"? All generated transcripts, decisions, and files will be removed.
             </DialogDescription>

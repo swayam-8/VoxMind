@@ -218,55 +218,55 @@ export function OverviewPage() {
           </div>
 
           {/* Library Summary Stat Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-xl border border-border bg-surface-1 p-4.5 space-y-2">
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="rounded-xl border border-border bg-surface-1 p-3.5 sm:p-4.5 space-y-1.5 sm:space-y-2 min-w-0">
               <div className="flex items-center justify-between text-text-muted">
-                <span className="text-xs font-medium">Recordings</span>
-                <Mic className="h-4 w-4 text-accent" />
+                <span className="text-xs font-medium truncate">Recordings</span>
+                <Mic className="h-4 w-4 text-accent shrink-0" />
               </div>
-              <div className="text-2xl font-bold text-text-primary tracking-tight">
+              <div className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
                 {totalCount}
               </div>
-              <div className="text-[11px] text-text-secondary">
+              <div className="text-[11px] text-text-secondary truncate">
                 {readyCount} indexed, {pendingCount} in queue
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-surface-1 p-4.5 space-y-2">
+            <div className="rounded-xl border border-border bg-surface-1 p-3.5 sm:p-4.5 space-y-1.5 sm:space-y-2 min-w-0">
               <div className="flex items-center justify-between text-text-muted">
-                <span className="text-xs font-medium">Audio Analyzed</span>
-                <Clock className="h-4 w-4 text-emerald-500" />
+                <span className="text-xs font-medium truncate">Audio Analyzed</span>
+                <Clock className="h-4 w-4 text-emerald-500 shrink-0" />
               </div>
-              <div className="text-2xl font-bold text-text-primary tracking-tight">
+              <div className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
                 {totalHours} hrs
               </div>
-              <div className="text-[11px] text-text-secondary">
+              <div className="text-[11px] text-text-secondary truncate">
                 {formatSeconds(totalDuration)} total audio
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-surface-1 p-4.5 space-y-2">
+            <div className="rounded-xl border border-border bg-surface-1 p-3.5 sm:p-4.5 space-y-1.5 sm:space-y-2 min-w-0">
               <div className="flex items-center justify-between text-text-muted">
-                <span className="text-xs font-medium">Local Storage</span>
-                <HardDrive className="h-4 w-4 text-text-secondary" />
+                <span className="text-xs font-medium truncate">Local Storage</span>
+                <HardDrive className="h-4 w-4 text-text-secondary shrink-0" />
               </div>
-              <div className="text-2xl font-bold text-text-primary tracking-tight">
+              <div className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
                 {totalSizeMB} MB
               </div>
-              <div className="text-[11px] text-text-secondary">
+              <div className="text-[11px] text-text-secondary truncate">
                 Self-hosted media store
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-surface-1 p-4.5 space-y-2">
+            <div className="rounded-xl border border-border bg-surface-1 p-3.5 sm:p-4.5 space-y-1.5 sm:space-y-2 min-w-0">
               <div className="flex items-center justify-between text-text-muted">
-                <span className="text-xs font-medium">Extracted Actions</span>
-                <FileCheck2 className="h-4 w-4 text-accent" />
+                <span className="text-xs font-medium truncate">Extracted Actions</span>
+                <FileCheck2 className="h-4 w-4 text-accent shrink-0" />
               </div>
-              <div className="text-2xl font-bold text-text-primary tracking-tight">
+              <div className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
                 Active
               </div>
-              <div className="text-[11px] text-text-secondary">
+              <div className="text-[11px] text-text-secondary truncate">
                 Tracked across syncs
               </div>
             </div>

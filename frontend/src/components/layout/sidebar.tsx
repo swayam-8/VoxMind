@@ -10,8 +10,10 @@ import {
   AudioWaveform,
   LogOut,
   User,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,28 +71,40 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-surface-1 transition-transform duration-200 ease-in-out md:static md:translate-x-0 shrink-0",
+          "fixed top-0 bottom-0 left-0 z-50 flex w-64 max-w-[280px] flex-col border-r border-border bg-surface-1 transition-transform duration-200 ease-in-out md:static md:translate-x-0 shrink-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Brand header */}
-        <div className="flex h-14 items-center gap-2.5 px-5 border-b border-border">
+        <div className="flex h-14 items-center justify-between px-4 sm:px-5 border-b border-border">
           <Link
             to="/app/overview"
-            className="flex items-center gap-2.5 group focus:outline-none"
+            onClick={onClose}
+            className="flex items-center gap-2.5 group focus:outline-none min-w-0"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-subtle border border-accent/30 text-accent group-hover:border-accent/60 transition-colors">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-subtle border border-accent/30 text-accent group-hover:border-accent/60 transition-colors shrink-0">
               <AudioWaveform className="h-5 w-5" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-tight text-text-primary">
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold tracking-tight text-text-primary truncate">
                 VoxMind
               </span>
-              <span className="text-[10px] text-text-muted font-mono tracking-wider">
+              <span className="text-[10px] text-text-muted font-mono tracking-wider truncate">
                 VOICE INTELLIGENCE
               </span>
             </div>
           </Link>
+
+          {/* Mobile close button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="md:hidden h-8 w-8 text-text-muted hover:text-text-primary shrink-0"
+            aria-label="Close sidebar"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Navigation list */}
@@ -117,12 +131,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     : "text-text-secondary hover:bg-surface-2 hover:text-text-primary border border-transparent"
                 )}
               >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={cn("h-4 w-4", isActive ? "text-accent" : "text-text-muted")} />
-                  <span>{item.title}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-accent" : "text-text-muted")} />
+                  <span className="truncate">{item.title}</span>
                 </div>
                 {item.badge && (
-                  <span className="rounded-sm bg-accent/20 px-1.5 py-0.5 text-[10px] font-mono text-accent">
+                  <span className="rounded-sm bg-accent/20 px-1.5 py-0.5 text-[10px] font-mono text-accent shrink-0">
                     {item.badge}
                   </span>
                 )}
@@ -157,7 +171,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             <DropdownMenuContent align="end" className="w-56 mb-2">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => navigate("/app/settings")}>
+              <DropdownMenuItem onClick={() => { onClose?.(); navigate("/app/settings") }}>
                 <User className="mr-2 h-4 w-4 text-text-secondary" />
                 <span>Profile & Settings</span>
               </DropdownMenuItem>
