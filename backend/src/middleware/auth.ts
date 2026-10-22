@@ -20,11 +20,14 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
     let token: string | undefined;
     const authHeader = req.headers.authorization;
     const apiKeyHeader = req.headers['x-api-key'] as string | undefined;
+    const queryToken = req.query.token as string | undefined;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7).trim();
     } else if (apiKeyHeader) {
       token = apiKeyHeader.trim();
+    } else if (queryToken) {
+      token = queryToken.trim();
     }
 
     if (!token) {

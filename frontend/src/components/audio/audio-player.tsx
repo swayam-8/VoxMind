@@ -26,6 +26,8 @@ interface AudioPlayerProps {
   onChangePlaybackRate?: (rate: number) => void
   title?: string
   className?: string
+  audioSrc?: string
+  onTimeUpdate?: (currentTime: number) => void
 }
 
 function formatTime(seconds: number): string {
@@ -51,10 +53,45 @@ export function AudioPlayer({
   onChangePlaybackRate,
   title,
   className,
+  audioSrc,
+  onTimeUpdate,
 }: AudioPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [internalRate, setInternalRate] = useState(playbackRate)
   const progressBarRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Sync HTML5 audio element with React playback state
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (isPlaying) {
+      audio.play().catch(() => {
+        // Autoplay policy or media load in progress
+      })
+    } else {
+      audio.pause()
+    }
+  }, [isPlaying])
+
+  // Sync seek events to audio element
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (Math.abs(audio.currentTime - currentTime) > 0.5) {
+      audio.currentTime = currentTime
+    }
+  }, [currentTime])
+
+  // Sync rate and mute
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.playbackRate = internalRate
+    audio.muted = isMuted
+  }, [internalRate, isMuted])
 
   const progressPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
 
@@ -99,6 +136,24 @@ export function AudioPlayer({
         className
       )}
     >
+      {/* Hidden native HTML5 audio element for actual sound playback */}
+      {audioSrc && (
+        <audio
+          ref={audioRef}
+          src={audioSrc}
+          preload="metadata"
+          onTimeUpdate={() => {
+            if (audioRef.current) {
+              onTimeUpdate?.(audioRef.current.currentTime)
+            }
+          }}
+          onEnded={() => {
+            onTogglePlay()
+            onSeek(0)
+          }}
+        />
+      )}
+
       {/* Title & Status */}
       {title && (
         <div className="flex items-center justify-between border-b border-border/50 pb-2.5 gap-2 min-w-0">

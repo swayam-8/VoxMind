@@ -486,7 +486,7 @@ export function RecordingDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
         {/* Left Column: Player & Transcript (7 cols) */}
         <div className="lg:col-span-7 space-y-5 sm:space-y-6 min-w-0">
-          {/* Interactive Audio Player */}
+          {/* Interactive Audio Player with Real Sound Playback */}
           <AudioPlayer
             title={recording.title}
             durationSeconds={recording.duration_seconds || 1}
@@ -496,6 +496,12 @@ export function RecordingDetailPage() {
             onTogglePlay={() => setIsPlaying(!isPlaying)}
             playbackRate={playbackRate}
             onChangePlaybackRate={setPlaybackRate}
+            audioSrc={
+              id
+                ? `/api/v1/recordings/${id}/audio?token=${localStorage.getItem("voxmind_access_token") || ""}`
+                : undefined
+            }
+            onTimeUpdate={(t) => setCurrentTime(t)}
           />
 
           {/* Interactive Timestamped Transcript Panel */}
