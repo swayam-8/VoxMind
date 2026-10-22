@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 # Compatibility patch for PyAV 14+ with faster-whisper (removes deprecated metadata_errors kwarg)
 try:
     import av
+    import faster_whisper.audio
     _original_av_open = av.open
 
     def _safe_av_open(*args, **kwargs):
@@ -18,6 +19,7 @@ try:
         return _original_av_open(*args, **kwargs)
 
     av.open = _safe_av_open
+    faster_whisper.audio.av.open = _safe_av_open
 except Exception as _patch_err:
     logger.debug("PyAV compatibility patch not applied: %s", _patch_err)
 
@@ -93,7 +95,7 @@ class TranscriptionService:
         cls,
         audio_path: str,
         language: Optional[str] = None,
-        vad_filter: bool = True,
+        vad_filter: bool = False,
     ) -> Dict[str, Any]:
         """Execute local speech-to-text inference on an audio file."""
         if not os.path.exists(audio_path):
@@ -113,7 +115,6 @@ class TranscriptionService:
                 task="transcribe",
                 language=configured_language,
                 vad_filter=vad_filter,
-                vad_parameters=dict(min_silence_duration_ms=600),
             )
 
             result_segments: List[Dict[str, Any]] = []
@@ -138,6 +139,29 @@ class TranscriptionService:
                         "confidence": confidence,
                     }
                 )
+
+            # Fallback: if result_segments is empty and vad_filter was True, retry with vad_filter=False
+            if not result_segments and vad_filter:
+                logger.info("No segments produced with vad_filter, retrying with vad_filter=False")
+                retry_gen, _ = model.transcribe(
+                    audio_path,
+                    beam_size=5,
+                    task="transcribe",
+                    language=configured_language,
+                    vad_filter=False,
+                )
+                for seg in retry_gen:
+                    text = seg.text.strip()
+                    if text:
+                        result_segments.append(
+                            {
+                                "start": round(float(seg.start), 2),
+                                "end": round(float(seg.end), 2),
+                                "speaker": getattr(seg, "speaker", "Speaker 1"),
+                                "text": text,
+                                "confidence": 0.95,
+                            }
+                        )
 
             prob = (
                 round(float(info.language_probability), 3)
