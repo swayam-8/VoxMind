@@ -219,15 +219,46 @@ class ApiClient {
     return {}
   }
 
+  /**
+   * Automatically acquire a demo token if no session exists, ensuring zero friction in development
+   */
+  async ensureAuthenticated(): Promise<string> {
+    const existing = localStorage.getItem("voxmind_access_token")
+    if (existing) return existing
+
+    try {
+      const res = await this.login("demo@voxmind.dev", "DemoPassword123!")
+      const token = res.data?.access_token || res.data?.accessToken
+      if (token) {
+        localStorage.setItem("voxmind_access_token", token)
+        if (res.data?.user) {
+          localStorage.setItem("voxmind_user", JSON.stringify(res.data.user))
+        }
+        return token
+      }
+    } catch {
+      // fallback
+    }
+    return ""
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`
 
+    let authHeader = this.getAuthHeader()
+    if (!authHeader.Authorization && !endpoint.includes("/auth/")) {
+      const token = await this.ensureAuthenticated()
+      if (token) {
+        authHeader = { Authorization: `Bearer ${token}` }
+      }
+    }
+
     const headers: Record<string, string> = {
       Accept: "application/json",
-      ...this.getAuthHeader(),
+      ...authHeader,
       ...(options.headers as Record<string, string>),
     }
 
@@ -411,10 +442,12 @@ class ApiClient {
     return this.post<ApiRecording>("/recordings", formData)
   }
 
-  uploadRecordingWithProgress(
+  async uploadRecordingWithProgress(
     formData: FormData,
     onProgress?: (percent: number) => void
   ): Promise<ApiResponse<ApiRecording>> {
+    await this.ensureAuthenticated()
+
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
       const url = `${API_BASE}/recordings`
