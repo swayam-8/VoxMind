@@ -2,63 +2,73 @@
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --surface-1: #ffffff;
-    --surface-2: #f1f5f9;
-    --surface-3: #e2e8f0;
-    --border: #e2e8f0;
-    --border-subtle: #edf2f7;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --accent: #7c3aed;
-    --accent-hover: #6d28d9;
-    --accent-subtle: rgba(124, 58, 237, 0.08);
-    --accent-foreground: #ffffff;
-    --success: #10b981;
-    --success-subtle: rgba(16, 185, 129, 0.1);
-    --warning: #f59e0b;
-    --warning-subtle: rgba(245, 158, 11, 0.1);
-    --danger: #ef4444;
-    --danger-subtle: rgba(239, 68, 68, 0.1);
-    --ring: rgba(124, 58, 237, 0.35);
+    /* === MIDNIGHT STUDIO LIGHT THEME === */
+    --background: #F7F8FC;
+    --foreground: #111318;
+    --surface-1: #FFFFFF;
+    --surface-2: #F0F2F8;
+    --surface-3: #E4E7F0;
+    --surface-elevated: #FFFFFF;
+    --border: #D8DBE8;
+    --border-subtle: #E8EAF2;
+    --text-primary: #111318;
+    --text-secondary: #4A4D60;
+    --text-muted: #8C8FA8;
+    --accent: #6B5EFF;
+    --accent-hover: #5A4EE8;
+    --accent-subtle: rgba(107, 94, 255, 0.08);
+    --accent-foreground: #FFFFFF;
+    --success: #16A669;
+    --success-subtle: rgba(22, 166, 105, 0.10);
+    --warning: #E08B14;
+    --warning-subtle: rgba(224, 139, 20, 0.10);
+    --danger: #DC3545;
+    --danger-subtle: rgba(220, 53, 69, 0.10);
+    --ring: rgba(107, 94, 255, 0.35);
     --radius: 0.5rem;
+    --sidebar-bg: #F0F2F8;
+    --sidebar-border: #D8DBE8;
+    --header-bg: rgba(255, 255, 255, 0.95);
   }
 
   .dark {
-    --background: #0d0e11;
-    --foreground: #f3f4f6;
-    --surface-1: #14161c;
-    --surface-2: #1c1f27;
-    --surface-3: #252a36;
-    --border: #262b36;
-    --border-subtle: #1e222b;
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
-    --text-muted: #6b7280;
-    --accent: #8b5cf6;
-    --accent-hover: #7c3aed;
-    --accent-subtle: rgba(139, 92, 246, 0.12);
-    --accent-foreground: #ffffff;
-    --success: #10b981;
-    --success-subtle: rgba(16, 185, 129, 0.15);
-    --warning: #f59e0b;
-    --warning-subtle: rgba(245, 158, 11, 0.15);
-    --danger: #f87171;
-    --danger-subtle: rgba(248, 113, 113, 0.15);
-    --ring: rgba(139, 92, 246, 0.4);
+    /* === MIDNIGHT STUDIO DARK THEME === */
+    --background: #101116;
+    --foreground: #F3F4F8;
+    --surface-1: #181A22;
+    --surface-2: #1E202A;
+    --surface-3: #252832;
+    --surface-elevated: #1E202A;
+    --border: #2B2D38;
+    --border-subtle: #22242E;
+    --text-primary: #F3F4F8;
+    --text-secondary: #A0A3B2;
+    --text-muted: #777B8C;
+    --accent: #8B7CFF;
+    --accent-hover: #9E91FF;
+    --accent-subtle: rgba(139, 124, 255, 0.12);
+    --accent-foreground: #FFFFFF;
+    --success: #2DD4A0;
+    --success-subtle: rgba(45, 212, 160, 0.12);
+    --warning: #F5A623;
+    --warning-subtle: rgba(245, 166, 35, 0.12);
+    --danger: #F06B6B;
+    --danger-subtle: rgba(240, 107, 107, 0.12);
+    --ring: rgba(139, 124, 255, 0.40);
+    --sidebar-bg: #0C0D12;
+    --sidebar-border: #22242E;
+    --header-bg: rgba(16, 17, 22, 0.95);
   }
 
   * {
     border-color: var(--border);
+    box-sizing: border-box;
   }
 
   html, body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100dvh;
     width: 100%;
     overflow-x: hidden;
@@ -66,6 +76,16 @@
     padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -75,6 +95,7 @@
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-surface-elevated: var(--surface-elevated);
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
   --color-text-primary: var(--text-primary);
@@ -91,4 +112,7 @@
   --color-danger: var(--danger);
   --color-danger-subtle: var(--danger-subtle);
   --color-ring: var(--ring);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-header-bg: var(--header-bg);
 }

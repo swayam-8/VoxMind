@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useLocation } from "react-router-dom"
 import {
   User,
   Sun,
@@ -28,6 +29,7 @@ import { toast } from "@/hooks/use-toast"
 import { apiClient, type ApiDiagnostics } from "@/lib/api-client"
 
 export function SettingsPage() {
+  const location = useLocation()
   const { theme, setTheme } = useTheme()
 
   // Profile State
@@ -87,6 +89,15 @@ export function SettingsPage() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    if (location.hash === "#diagnostics") {
+      const el = document.getElementById("diagnostics")
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" })
+      }
+    }
+  }, [location.hash])
 
   const handleRefreshDiagnostics = async () => {
     try {
@@ -231,7 +242,7 @@ export function SettingsPage() {
       </div>
 
       {/* 1. Live System Diagnostics Hub */}
-      <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
+      <section id="diagnostics" className="rounded-xl border border-border bg-surface-1 p-5 space-y-4 scroll-mt-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-accent" />

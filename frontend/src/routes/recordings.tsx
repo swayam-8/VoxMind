@@ -14,7 +14,6 @@ import {
   Play,
   RotateCcw,
   RotateCw,
-  Sparkles,
   AlertCircle,
   FolderOpen,
 } from "lucide-react"
@@ -157,7 +156,7 @@ export function RecordingsPage() {
             <h1 className="text-xl font-bold tracking-tight text-text-primary">
               Recordings Library
             </h1>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-[10px] font-mono">
               {totalCount} Total
             </Badge>
           </div>
@@ -171,7 +170,7 @@ export function RecordingsPage() {
             variant="default"
             size="sm"
             onClick={() => setUploadOpen(true)}
-            className="shadow-sm"
+            className="shadow-xs"
           >
             <UploadCloud className="w-4 h-4 mr-1.5" />
             Upload Audio
@@ -180,15 +179,15 @@ export function RecordingsPage() {
       </div>
 
       {/* Filter and Control Bar */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-surface-1 p-3 sm:p-3.5 rounded-xl border border-border min-w-0">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 bg-surface-1 p-2.5 sm:p-3 rounded-xl border border-border min-w-0">
         {/* Search Input */}
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+          <Search className="absolute left-2.5 top-2 h-4 w-4 text-text-muted" />
           <Input
             placeholder="Search by title or filename..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-surface-2 border-border text-xs w-full"
+            className="pl-8 bg-surface-2 border-border text-xs w-full"
           />
         </div>
 
@@ -197,13 +196,13 @@ export function RecordingsPage() {
           {/* Status Filter */}
           <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-36">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 text-xs w-full">
+              <SelectTrigger className="h-8 text-xs w-full bg-surface-2">
                 <Filter className="w-3 h-3 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="ready">Ready (Indexed)</SelectItem>
+                <SelectItem value="ready">Completed (Indexed)</SelectItem>
                 <SelectItem value="transcribing">Transcribing</SelectItem>
                 <SelectItem value="queued">Queued</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
@@ -225,7 +224,7 @@ export function RecordingsPage() {
                 setSearchParams(next)
               }}
             >
-              <SelectTrigger className="h-9 text-xs w-full">
+              <SelectTrigger className="h-8 text-xs w-full bg-surface-2">
                 <FolderOpen className="w-3 h-3 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Collection" />
               </SelectTrigger>
@@ -249,7 +248,7 @@ export function RecordingsPage() {
                 setOrder(val === "title" ? "asc" : "desc")
               }}
             >
-              <SelectTrigger className="h-9 text-xs w-full">
+              <SelectTrigger className="h-8 text-xs w-full bg-surface-2">
                 <ArrowUpDown className="w-3 h-3 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -263,24 +262,24 @@ export function RecordingsPage() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center border border-border rounded-md p-0.5 bg-surface-2 ml-auto xs:ml-0">
+          <div className="flex items-center border border-border rounded-lg p-0.5 bg-surface-2 ml-auto xs:ml-0">
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon"
               onClick={() => setViewMode("list")}
-              className="h-8 w-8 rounded-sm"
+              className="h-7 w-7 rounded-md"
               aria-label="List view"
             >
-              <List className="h-4 w-4" />
+              <List className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon"
               onClick={() => setViewMode("grid")}
-              className="h-8 w-8 rounded-sm"
+              className="h-7 w-7 rounded-md"
               aria-label="Grid view"
             >
-              <LayoutGrid className="h-4 w-4" />
+              <LayoutGrid className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
@@ -314,10 +313,10 @@ export function RecordingsPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-border bg-surface-1 flex items-center justify-between"
+              className="p-3.5 rounded-xl border border-border bg-surface-1 flex items-center justify-between"
             >
               <div className="flex items-center gap-3 w-1/2">
-                <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                <Skeleton className="h-8.5 w-8.5 rounded-lg shrink-0" />
                 <div className="space-y-1.5 w-full">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
@@ -325,7 +324,7 @@ export function RecordingsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <Skeleton className="h-6 w-16 rounded-full" />
-                <Skeleton className="h-8 w-8 rounded-md" />
+                <Skeleton className="h-7 w-7 rounded-md" />
               </div>
             </div>
           ))}
@@ -333,8 +332,10 @@ export function RecordingsPage() {
       ) : recordings.length === 0 ? (
         /* Genuine Empty / No Results State */
         <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-border bg-surface-1">
-          <Mic className="h-10 w-10 text-text-muted mb-3" />
-          <h3 className="text-base font-semibold text-text-primary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-text-muted mb-3 border border-border">
+            <Mic className="h-6 w-6" />
+          </div>
+          <h3 className="text-sm font-semibold text-text-primary">
             {search ? `No recordings match "${search}"` : "No recordings yet"}
           </h3>
           <p className="max-w-sm mt-1 text-xs text-text-secondary">
@@ -357,20 +358,20 @@ export function RecordingsPage() {
           {recordings.map((rec) => (
             <div
               key={rec.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all gap-3 group"
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all gap-3 group"
             >
-              <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                <div className="h-10 w-10 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent transition-colors shrink-0 mt-0.5 sm:mt-0">
-                  <Mic className="h-5 w-5" />
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent group-hover:bg-accent-subtle transition-colors shrink-0 mt-0.5 sm:mt-0">
+                  <Mic className="h-4.5 w-4.5" />
                 </div>
                 <div className="min-w-0">
                   <Link
                     to={`/app/recordings/${rec.id}`}
-                    className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline block truncate"
+                    className="text-xs sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline block truncate"
                   >
                     {rec.title}
                   </Link>
-                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-text-muted">
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-text-muted">
                     {rec.collection_name && (
                       <>
                         <span className="flex items-center gap-1 text-text-secondary">
@@ -387,7 +388,7 @@ export function RecordingsPage() {
                     <span>•</span>
                     <span>{formatDate(rec.created_at)}</span>
                     <span>•</span>
-                    <span className="font-mono text-[11px] text-text-muted">
+                    <span className="font-mono text-[10px]">
                       {(rec.file_size_bytes / (1024 * 1024)).toFixed(1)} MB
                     </span>
                   </div>
@@ -395,32 +396,32 @@ export function RecordingsPage() {
               </div>
 
               {/* Status and Action Buttons */}
-              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                <div className="flex items-center gap-1.5">
                   {(rec.status === "ready" || rec.status === "completed") && (
-                    <Badge variant="success">Completed</Badge>
+                    <Badge variant="success" className="font-mono text-[10px]">Completed</Badge>
                   )}
                   {(rec.status === "transcribing" || rec.status === "processing") && (
-                    <Badge variant="warning" className="animate-pulse">
+                    <Badge variant="warning" className="font-mono text-[10px] animate-pulse">
                       Processing...
                     </Badge>
                   )}
                   {rec.status === "queued" && (
-                    <Badge variant="secondary">Queued</Badge>
+                    <Badge variant="secondary" className="font-mono text-[10px]">Queued</Badge>
                   )}
                   {rec.status === "failed" && (
-                    <Badge variant="danger">Failed</Badge>
+                    <Badge variant="danger" className="font-mono text-[10px]">Failed</Badge>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {rec.status === "failed" && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => retryMutation.mutate(rec.id)}
                       isLoading={retryMutation.isPending}
-                      className="h-8 text-xs font-medium text-warning border-warning/30 hover:bg-warning-subtle"
+                      className="h-7 text-xs font-medium text-warning border-warning/30 hover:bg-warning-subtle"
                       title="Retry Transcription"
                     >
                       <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry
@@ -431,9 +432,9 @@ export function RecordingsPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="h-8 text-xs font-medium"
+                      className="h-7 text-xs font-medium"
                     >
-                      <Play className="w-3.5 h-3.5 mr-1" /> Workspace
+                      <Play className="w-3 h-3 mr-1 text-accent" /> Workspace
                     </Button>
                   </Link>
 
@@ -441,7 +442,7 @@ export function RecordingsPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setDeleteTarget(rec)}
-                    className="h-8 w-8 text-text-muted hover:text-danger"
+                    className="h-7 w-7 text-text-muted hover:text-danger"
                     aria-label="Delete recording"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -453,46 +454,46 @@ export function RecordingsPage() {
         </div>
       ) : (
         /* Grid Presentation View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {recordings.map((rec) => (
             <div
               key={rec.id}
-              className="flex flex-col justify-between p-5 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all space-y-4 group"
+              className="flex flex-col justify-between p-4 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all space-y-3.5 group"
             >
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="h-9 w-9 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent transition-colors">
+                  <div className="h-8.5 w-8.5 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent transition-colors">
                     <Mic className="h-4 w-4" />
                   </div>
                   <div className="flex items-center gap-1.5">
                     {(rec.status === "ready" || rec.status === "completed") && (
-                      <Badge variant="success">Completed</Badge>
+                      <Badge variant="success" className="font-mono text-[10px]">Completed</Badge>
                     )}
                     {(rec.status === "transcribing" || rec.status === "processing") && (
-                      <Badge variant="warning" className="animate-pulse">
+                      <Badge variant="warning" className="font-mono text-[10px] animate-pulse">
                         Processing...
                       </Badge>
                     )}
-                    {rec.status === "queued" && <Badge variant="secondary">Queued</Badge>}
-                    {rec.status === "failed" && <Badge variant="danger">Failed</Badge>}
+                    {rec.status === "queued" && <Badge variant="secondary" className="font-mono text-[10px]">Queued</Badge>}
+                    {rec.status === "failed" && <Badge variant="danger" className="font-mono text-[10px]">Failed</Badge>}
                   </div>
                 </div>
 
                 <div>
                   <Link
                     to={`/app/recordings/${rec.id}`}
-                    className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline line-clamp-2"
+                    className="text-xs sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline line-clamp-2"
                   >
                     {rec.title}
                   </Link>
-                  <p className="text-xs text-text-muted mt-1 truncate">
+                  <p className="text-[11px] text-text-muted mt-0.5 truncate">
                     {rec.filename}
                   </p>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-border/50 space-y-3">
-                <div className="flex items-center justify-between text-xs text-text-muted">
+              <div className="pt-2.5 border-t border-border/50 space-y-2.5">
+                <div className="flex items-center justify-between text-[11px] text-text-muted">
                   <span className="flex items-center gap-1 font-mono">
                     <Clock className="h-3 w-3" />
                     {formatDuration(rec.duration_seconds)}
@@ -500,17 +501,17 @@ export function RecordingsPage() {
                   <span>{formatDate(rec.created_at)}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Link to={`/app/recordings/${rec.id}`} className="flex-1">
-                    <Button variant="secondary" size="sm" className="w-full text-xs">
-                      <Sparkles className="w-3.5 h-3.5 mr-1 text-accent" /> Open Workspace
+                    <Button variant="secondary" size="sm" className="w-full text-xs h-7">
+                      <Play className="w-3 h-3 mr-1 text-accent" /> Open Workspace
                     </Button>
                   </Link>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setDeleteTarget(rec)}
-                    className="h-8 w-8 text-text-muted hover:text-danger"
+                    className="h-7 w-7 text-text-muted hover:text-danger"
                     aria-label="Delete recording"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -530,16 +531,17 @@ export function RecordingsPage() {
         <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full border-border bg-surface-1 p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Delete Audio Recording?</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               Are you sure you want to permanently delete "{deleteTarget?.title}"? All generated transcripts, decisions, and files will be removed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
-            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
+              size="sm"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
               isLoading={deleteMutation.isPending}
             >

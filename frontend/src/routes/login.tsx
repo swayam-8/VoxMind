@@ -42,6 +42,9 @@ export function LoginPage() {
 
     try {
       const res = await apiClient.login(email.trim(), password)
+      if (res.data?.user) {
+        localStorage.setItem("voxmind_user", JSON.stringify(res.data.user))
+      }
       const userName = res.data?.user?.fullName || res.data?.user?.email || email.trim()
 
       toast({
@@ -65,25 +68,25 @@ export function LoginPage() {
   }
 
   const fillDemoCredentials = () => {
-    setEmail("admin@voxmind.internal")
-    setPassword("voxmind2026")
+    setEmail("demo@voxmind.dev")
+    setPassword("DemoPassword123!")
     setErrors({})
   }
 
   return (
-    <div className="min-h-screen bg-background text-text-primary flex flex-col justify-between p-4 sm:p-6 lg:p-8">
+    <div className="min-h-[100dvh] bg-background text-text-primary flex flex-col justify-between p-4 sm:p-6 lg:p-8">
       {/* Top Bar with Brand & Theme Toggle */}
-      <div className="flex items-center justify-between max-w-6xl w-full mx-auto">
+      <div className="flex items-center justify-between max-w-5xl w-full mx-auto">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-subtle border border-accent/30 text-accent">
-            <AudioWaveform className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white shadow-xs">
+            <AudioWaveform className="h-4.5 w-4.5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-bold tracking-tight text-text-primary">
+            <span className="text-sm font-bold tracking-tight text-text-primary">
               VoxMind
             </span>
-            <span className="text-[10px] text-text-muted font-mono tracking-wider">
-              LOCAL VOICE INTELLIGENCE
+            <span className="text-[9px] text-text-muted font-mono tracking-wider">
+              VOICE INTELLIGENCE
             </span>
           </div>
         </div>
@@ -91,10 +94,13 @@ export function LoginPage() {
       </div>
 
       {/* Main Login Form Container */}
-      <div className="w-full max-w-md mx-auto my-auto py-8">
-        <div className="rounded-xl border border-border bg-surface-1 p-6 sm:p-8 shadow-xl space-y-6">
+      <div className="w-full max-w-sm mx-auto my-auto py-8">
+        <div className="rounded-2xl border border-border bg-surface-1 p-6 sm:p-7 shadow-lg space-y-5">
           <div className="space-y-1.5 text-center sm:text-left">
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-white shadow-xs mb-1 sm:hidden">
+              <AudioWaveform className="h-5 w-5" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
               Welcome back
             </h1>
             <p className="text-xs text-text-secondary">
@@ -103,57 +109,58 @@ export function LoginPage() {
           </div>
 
           {errors.general && (
-            <div className="p-3 text-xs text-danger bg-danger/10 border border-danger/20 rounded-md">
+            <div className="p-2.5 text-xs text-danger bg-danger-subtle border border-danger/30 rounded-lg">
               {errors.general}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
+          <form onSubmit={handleLogin} className="space-y-3.5">
+            <div className="space-y-1">
               <label className="text-xs font-medium text-text-secondary block">
                 Work Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                <Mail className="absolute left-2.5 top-2 h-4 w-4 text-text-muted" />
                 <Input
                   type="email"
-                  placeholder="name@company.com"
+                  placeholder="demo@voxmind.dev"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9 bg-surface-2 border-border text-sm"
+                  className="pl-8 bg-surface-2 border-border text-xs"
                   disabled={isLoading}
                 />
               </div>
               {errors.email && (
-                <p className="text-[11px] text-danger mt-1">{errors.email}</p>
+                <p className="text-[11px] text-danger mt-0.5">{errors.email}</p>
               )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-text-secondary block">
                   Password
                 </label>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                <Lock className="absolute left-2.5 top-2 h-4 w-4 text-text-muted" />
                 <Input
                   type="password"
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 bg-surface-2 border-border text-sm"
+                  className="pl-8 bg-surface-2 border-border text-xs"
                   disabled={isLoading}
                 />
               </div>
               {errors.password && (
-                <p className="text-[11px] text-danger mt-1">{errors.password}</p>
+                <p className="text-[11px] text-danger mt-0.5">{errors.password}</p>
               )}
             </div>
 
             <Button
               type="submit"
-              className="w-full mt-2"
+              size="md"
+              className="w-full mt-1.5 shadow-xs"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -171,22 +178,22 @@ export function LoginPage() {
           </form>
 
           {/* Quick Demo Credentials Access */}
-          <div className="rounded-lg bg-surface-2/60 border border-border/60 p-3 space-y-2">
+          <div className="rounded-xl bg-surface-2/60 border border-border/70 p-3 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-medium text-text-secondary flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                Pre-configured Workspace Demo
+                Demo Credentials
               </span>
               <button
                 type="button"
                 onClick={fillDemoCredentials}
-                className="text-[11px] text-accent hover:underline font-mono"
+                className="text-[11px] text-accent hover:underline font-medium cursor-pointer"
               >
                 Auto-fill
               </button>
             </div>
             <p className="text-[10px] text-text-muted">
-              Auto-fills credentials for the default local administrator workspace.
+              Auto-fills demo credentials (demo@voxmind.dev / DemoPassword123!).
             </p>
           </div>
 
@@ -205,7 +212,7 @@ export function LoginPage() {
       </div>
 
       {/* Footer */}
-      <div className="max-w-6xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-text-muted gap-2">
+      <div className="max-w-5xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-text-muted gap-2">
         <span>VoxMind Local-First Intelligence — Single-tenant architecture</span>
         <span>Version 1.0.0 (Release)</span>
       </div>

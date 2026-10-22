@@ -14,7 +14,7 @@ export function Header({ onToggleSidebar, title = "Overview" }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-surface-1/95 px-3 sm:px-4 backdrop-blur-xs min-w-0">
+      <header className="sticky top-0 z-30 flex h-13 w-full items-center justify-between border-b border-border bg-header-bg px-3 sm:px-4 backdrop-blur-xs min-w-0">
         {/* Left side: Hamburger & Title */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
           <Button
@@ -24,7 +24,7 @@ export function Header({ onToggleSidebar, title = "Overview" }: HeaderProps) {
             className="md:hidden h-8 w-8 text-text-secondary shrink-0"
             aria-label="Open navigation sidebar"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4.5 w-4.5" />
           </Button>
 
           <div className="flex items-center gap-2 min-w-0">
@@ -63,19 +63,28 @@ export function Header({ onToggleSidebar, title = "Overview" }: HeaderProps) {
             <Search className="h-4 w-4" />
           </Button>
 
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-xs text-text-secondary">
+          {/* Compact Whisper indicator */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-xs text-text-secondary"
+            title="faster-whisper STT: Ready"
+          >
             <Activity className="h-3.5 w-3.5 text-accent" />
-            <span>faster-whisper</span>
+            <span className="hidden md:inline">whisper</span>
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           </div>
 
-          <div className="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-xs text-text-secondary">
+          {/* Compact Ollama indicator */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-xs text-text-secondary"
+            title="Ollama LLM: Connected"
+          >
             <Sparkles className="h-3.5 w-3.5 text-accent" />
-            <span>Ollama</span>
+            <span className="hidden md:inline">Ollama</span>
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-xs text-text-secondary">
+          {/* Privacy isolation badge */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-xs text-text-secondary">
             <ShieldCheck className="h-3.5 w-3.5 text-text-muted" />
             <span>Local Isolated</span>
           </div>
