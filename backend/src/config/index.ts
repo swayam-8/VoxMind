@@ -46,18 +46,10 @@ if (isProduction) {
   jwtSecret = jwtSecret || 'voxmind-dev-isolated-secret-do-not-use-in-production-min32chars';
 }
 
-const rawAiUrl = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001';
-const aiServiceUrl = rawAiUrl.includes('ai_service') ? 'http://127.0.0.1:8001' : rawAiUrl;
-
-const rawMongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/voxmind';
-const mongoUri = rawMongoUri.includes('@mongo:') || rawMongoUri.startsWith('mongodb://mongo:')
-  ? rawMongoUri.replace('//mongo:', '//localhost:')
-  : rawMongoUri;
-
-const rawRedisUrl = process.env.REDIS_URL || 'redis://localhost:6379/0';
-const redisUrl = rawRedisUrl.startsWith('redis://redis:')
-  ? rawRedisUrl.replace('redis://redis:', 'redis://localhost:')
-  : rawRedisUrl;
+// Respect explicit service addresses: Docker uses service names, native dev uses localhost.
+const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001';
+const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/voxmind';
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379/0';
 
 export const config: AppConfig = {
   port: parseInt(process.env.PORT || '5000', 10),

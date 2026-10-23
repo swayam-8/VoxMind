@@ -11,6 +11,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  startup-ci:
+    name: One-command startup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Validate Compose configuration
+        env:
+          JWT_SECRET: voxmind-ci-only-compose-validation-secret
+        run: docker compose config --quiet
+
   # ============================================================================
   # 1. Frontend: Linting, TypeScript Verification, & Production Build
   # ============================================================================

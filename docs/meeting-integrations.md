@@ -8,6 +8,10 @@ This imports existing cloud recordings. It does not join meetings, start a recor
 
 ## Server setup
 
+With the one-command Docker workflow (`npm start` in the project root), the encryption key is generated automatically in the root `.env`. Add provider client IDs and secrets to that file and run `npm start` again. You do not need to run the native setup commands below. Keep the same encryption key across restarts. Missing integration settings are copied from an existing `backend/.env` on startup; existing root values take precedence.
+
+For native development, use the following setup instead.
+
 Use the normal native development workflow with MongoDB and Redis running. In `backend`:
 
 ```sh

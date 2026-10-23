@@ -29,6 +29,38 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Bundled local LLM server; no separate Ollama installation is needed.
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      - OLLAMA_NO_CLOUD=true
+      - NO_PROXY=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
+      - no_proxy=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "OLLAMA_HOST=http://127.0.0.1:11434 ollama list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Download once; the persistent volume makes subsequent starts quick.
+  ollama_model:
+    image: ollama/ollama:latest
+    profiles: ["models"]
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - NO_PROXY=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
+      - no_proxy=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ['ollama show "$$OLLAMA_MODEL" >/dev/null 2>&1 || ollama pull "$$OLLAMA_MODEL"']
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
   # Python Local AI Microservice (faster-whisper, sentence-transformers, Ollama client)
   ai_service:
     build:
@@ -36,22 +68,29 @@ services:
       dockerfile: Dockerfile
     container_name: voxmind-ai-service
     environment:
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
       - WHISPER_MODEL=${WHISPER_MODEL:-base}
       - WHISPER_DEVICE=cpu
       - WHISPER_COMPUTE_TYPE=int8
       - EMBEDDING_MODEL=all-MiniLM-L6-v2
       - EMBEDDING_DEVICE=cpu
+      - NO_PROXY=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
+      - no_proxy=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
     ports:
-      - "${AI_SERVICE_PORT:-8000}:8000"
+      - "${AI_SERVICE_PORT:-8001}:8000"
     volumes:
       - storage_data:/app/storage
+      - model_cache:/root/.cache/huggingface
+    depends_on:
+      ollama:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl --noproxy '*' -f http://127.0.0.1:8000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   # Node.js + Express + BullMQ Backend
@@ -65,8 +104,10 @@ services:
       - PORT=5000
       - MONGO_URI=mongodb://mongo:27017/voxmind
       - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET=${JWT_SECRET:-voxmind-default-docker-secret-key-32chars-min-change-prod}
+      - JWT_SECRET=${JWT_SECRET:?Run npm start to generate your local configuration}
       - AI_SERVICE_URL=http://ai_service:8000
+      - NO_PROXY=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
+      - no_proxy=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
       - UPLOAD_DIR=/app/storage/uploads
       - CORS_ORIGIN=http://localhost:5173
       - INTEGRATION_ENCRYPTION_KEY=${INTEGRATION_ENCRYPTION_KEY:-}
@@ -90,7 +131,7 @@ services:
       ai_service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,7 +149,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget -Y off -qO- http://127.0.0.1:80/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -118,3 +159,5 @@ volumes:
   mongo_data:
   redis_data:
   storage_data:
+  ollama_data:
+  model_cache:

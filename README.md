@@ -186,42 +186,43 @@ VoxMind/
 
 ## Quickstart Guide
 
-### Option A: Complete Docker Compose Orchestration (Recommended)
+### Start everything with one command (recommended)
 
-Ensure Docker Desktop or Docker Engine is running on your machine.
+Install **Node.js 22.12 or newer** and start **Docker Desktop**. In the project root, run:
 
-```bash
-# 1. Clone repository
-git clone https://github.com/voxmind/voxmind.git
-cd VoxMind
-
-# 2. Configure environment
-cp .env.example .env
-
-# 3. Pull Ollama model on host (if using host Ollama instance)
-ollama pull llama3.2
-
-# 4. Start all services via script
-# Linux / macOS:
-./scripts/start-docker.sh --build
-
-# Windows (PowerShell):
-.\scripts\start-docker.ps1 -Build
+```sh
+npm start
 ```
 
-Once initialized:
-- **Web Client:** `http://localhost:5173`
-- **REST API:** `http://localhost:5000/api/v1`
-- **Health Check:** `http://localhost:5000/api/v1/health`
-- **FastAPI Docs:** `http://localhost:8001/docs`
+That's it. The launcher creates a private `.env` with random secrets, builds the applications, starts MongoDB, Redis, Ollama, the AI service, the backend, and the frontend, and waits for the servers to start. It downloads the configured Ollama model in the background if missing, so the website can open while the model prepares. AI summaries and answers become available once the download finishes. No separate Python, MongoDB, Redis, or Ollama installation is needed. There are no root npm dependencies to install.
+
+Open **http://localhost:5173** and register an account. Keep Docker Desktop running. The services run in the background, so you can close the terminal after startup succeeds.
+
+- **Stop everything:** `npm stop` (keeps your data and downloaded models).
+- **View logs:** `npm run logs`.
+- **Start again or rebuild after updating:** `npm start`.
+- **API health:** http://localhost:5000/api/v1/health
+- **AI API docs:** http://localhost:8001/docs (default port).
+
+Allow at least 15 GB of free Docker disk space and 8 GB of memory. The first start downloads several GB of images and model files and can take several minutes. Whisper and embedding weights download when first used and are cached across restarts. If startup times out during an initial download, inspect `npm run logs` and retry `npm start`. Stop previous native development servers first if they occupy ports 5000, 5173, or 8001.
+
+To get the code on a new computer:
+
+```sh
+git clone https://github.com/swayam-8/VoxMind.git
+cd VoxMind
+npm start
+```
+
+For Docker startup, optional meeting-provider credentials go in the root `.env`; run `npm start` again after changing them. The launcher reuses missing integration settings from an existing `backend/.env`, including its encryption key, without overwriting values already set in the root `.env`. Keep both files private. See [meeting integration setup](docs/meeting-integrations.md).
 
 ---
 
 ### Option B: Local Native Development
 
 #### 1. Prerequisites
-- **Node.js** >= 20.x
-- **Python** >= 3.10
+- **Node.js** >= 22.12
+- **Python** 3.11 or 3.12
 - **MongoDB** running on `localhost:27017`
 - **Redis** running on `localhost:6379`
 - **Ollama** running on `localhost:11434` (`ollama serve`, model: `llama3.2`)

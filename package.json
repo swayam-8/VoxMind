@@ -1,0 +1,15 @@
+{
+  "name": "voxmind",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Start the complete local VoxMind stack with one command",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "stop": "node scripts/start.mjs stop",
+    "logs": "node scripts/start.mjs logs",
+    "test": "node --test scripts/start.test.mjs"
+  }
+}
