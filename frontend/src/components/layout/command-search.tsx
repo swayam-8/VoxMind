@@ -1,75 +1,84 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
-import { Search, Mic, ArrowRight, Sparkles, Clock } from "lucide-react"
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { apiClient, type ApiSearchMatch } from "@/lib/api-client"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Mic, ArrowRight, Sparkles, Clock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { apiClient, type ApiSearchMatch } from "@/lib/api-client";
 
 interface CommandSearchProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
-  const [query, setQuery] = useState("")
-  const [passageResults, setPassageResults] = useState<ApiSearchMatch[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const navigate = useNavigate()
+  const [query, setQuery] = useState("");
+  const [passageResults, setPassageResults] = useState<ApiSearchMatch[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch real recordings
   const { data: recData } = useQuery({
     queryKey: ["recordings"],
     queryFn: () => apiClient.getRecordings({ per_page: 50 }),
-  })
-  const recordings = recData?.data || []
+    enabled: open && !!localStorage.getItem("voxmind_access_token"),
+  });
+  const recordings = recData?.data || [];
 
   // Global hotkey: Cmd+K / Ctrl+K
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
-        onOpenChange(!open)
+        e.preventDefault();
+        onOpenChange(!open);
       }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [open, onOpenChange])
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onOpenChange]);
 
   // Debounced semantic search
   useEffect(() => {
-    const trimmed = query.trim()
-    if (trimmed.length < 3) return
+    const trimmed = query.trim();
+    if (trimmed.length < 3) return;
 
     const timer = setTimeout(async () => {
-      setIsSearching(true)
+      setIsSearching(true);
       try {
-        const res = await apiClient.search(trimmed, { limit: 4, mode: "hybrid" })
-        setPassageResults(res.data.results || [])
+        const res = await apiClient.search(trimmed, {
+          limit: 4,
+          mode: "hybrid",
+        });
+        setPassageResults(res.data.results || []);
       } catch (err) {
-        console.error("Command search failed:", err)
+        console.error("Command search failed:", err);
       } finally {
-        setIsSearching(false)
+        setIsSearching(false);
       }
-    }, 280)
+    }, 280);
 
-    return () => clearTimeout(timer)
-  }, [query])
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const filteredRecordings = recordings.filter((r) =>
-    r.title.toLowerCase().includes(query.toLowerCase())
-  )
+    r.title.toLowerCase().includes(query.toLowerCase()),
+  );
 
   const handleSelect = (href: string) => {
-    onOpenChange(false)
-    setQuery("")
-    navigate(href)
-  }
+    onOpenChange(false);
+    setQuery("");
+    navigate(href);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,12 +93,13 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
           <Search className="h-4 w-4 text-text-muted mr-3 shrink-0" />
           <input
             type="text"
+            aria-label="Search recordings and transcripts"
             placeholder="Search recordings, spoken passages, or questions... (Esc to close)"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value)
+              setQuery(e.target.value);
               if (e.target.value.trim().length < 3) {
-                setPassageResults([])
+                setPassageResults([]);
               }
             }}
             className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
@@ -107,14 +117,20 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
             <div>
               <div className="px-3 py-1.5 text-[11px] font-semibold text-accent uppercase tracking-wider flex items-center justify-between">
                 <span>Spoken Transcript Passages</span>
-                {isSearching && <span className="text-[10px] animate-pulse">Searching...</span>}
+                {isSearching && (
+                  <span className="text-[10px] animate-pulse">
+                    Searching...
+                  </span>
+                )}
               </div>
               <div className="space-y-1">
                 {passageResults.map((match) => (
                   <button
                     key={match.chunk_id}
                     onClick={() =>
-                      handleSelect(`/app/recordings/${match.recording_id}?t=${match.start_time}`)
+                      handleSelect(
+                        `/app/recordings/${match.recording_id}?t=${match.start_time}`,
+                      )
                     }
                     className="w-full p-2.5 rounded-lg border border-border bg-surface-2/60 hover:bg-surface-2 hover:border-accent/40 text-left transition-colors cursor-pointer group"
                   >
@@ -123,8 +139,8 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
                         {match.recording_title}
                       </span>
                       <span className="inline-flex items-center gap-1 font-mono text-[10px] text-accent bg-accent-subtle px-1.5 py-0.5 rounded shrink-0">
-                        <Clock className="w-2.5 h-2.5" />
-                        [{formatTime(match.start_time)}]
+                        <Clock className="w-2.5 h-2.5" />[
+                        {formatTime(match.start_time)}]
                       </span>
                     </div>
                     <p className="text-xs text-text-secondary line-clamp-2 italic">
@@ -176,7 +192,9 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
               >
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="h-4 w-4 text-accent" />
-                  <span className="text-text-primary font-medium">Ask VoxMind (Evidence RAG)</span>
+                  <span className="text-text-primary font-medium">
+                    Ask VoxMind (Evidence RAG)
+                  </span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-text-muted" />
               </button>
@@ -194,5 +212,5 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

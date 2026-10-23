@@ -1,33 +1,50 @@
-import React, { useState } from "react"
-import { Sidebar } from "./sidebar"
-import { Header } from "./header"
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import { Sidebar } from "./sidebar";
+import { Header } from "./header";
 
-interface AppShellProps {
-  children: React.ReactNode
-  title?: string
-}
-
-export function AppShell({ children, title }: AppShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
+const titles: Record<string, string> = {
+  overview: "Overview",
+  recordings: "Recordings",
+  collections: "Collections",
+  ask: "Ask VoxMind",
+  api: "Integrations",
+  settings: "Settings",
+};
+export function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => {
+      if (media.matches) setSidebarOpen(false);
+    };
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, []);
+  const title = titles[location.pathname.split("/")[2]] || "Workspace";
+  useEffect(() => {
+    document.title = `${title} — VoxMind`;
+    window.scrollTo(0, 0);
+  }, [location.pathname, title]);
   return (
-    <div className="flex min-h-[100dvh] w-full bg-background text-text-primary antialiased">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <Header
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          title={title}
-        />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-5 lg:p-6 max-w-7xl w-full mx-auto min-w-0">
-            {children}
+    <div className="app-frame">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="workspace-body">
+        <Header onToggleSidebar={() => setSidebarOpen(true)} title={title} />
+        <main id="main-content" className="workspace-main" tabIndex={-1}>
+          <div className="page-content">
+            <Outlet />
           </div>
         </main>
+        <footer className="workspace-footer">
+          <span>VoxMind — A little more clarity.</span>
+          <span>YOUR VOICE. YOUR WORKSPACE.</span>
+        </footer>
       </div>
     </div>
-  )
+  );
 }

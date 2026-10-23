@@ -6,7 +6,7 @@
 [![Queue](https://img.shields.io/badge/Queue-Redis%20%7C%20BullMQ-EF4444)](backend/src/queues)
 [![AI Service](https://img.shields.io/badge/AI%20Microservice-FastAPI%20%7C%20faster--whisper%20%7C%20SentenceTransformers-8B5CF6)](ai-service)
 [![LLM](https://img.shields.io/badge/LLM-Local%20Ollama%20%28llama3.2%29-EC4899)](https://ollama.com)
-[![Theme](https://img.shields.io/badge/Design-Midnight%20Studio-0C0D12)](frontend/src/index.css)
+[![Theme](https://img.shields.io/badge/Design-Listening%20Room-0C0D12)](frontend/src/index.css)
 [![License](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
 
 VoxMind is an enterprise-grade, **local-first voice intelligence platform** that ingests multi-speaker audio recordings, transcribes them on-premises, and extracts executive summaries, concrete decisions, and assigned action items — all backed by cross-recording semantic vector search (RAG) with millisecond-accurate audio citation playback.
@@ -111,16 +111,24 @@ VoxMind/
 │       │   └── diagnostics/        # Live infrastructure probes & system metrics
 │       ├── queues/                 # BullMQ queues for audio processing & AI inference
 │       └── services/               # AI service client, token management, storage
-├── frontend/                       # Web Client (React 19 + TypeScript + Vite)
-│   ├── package.json                # React 19, Radix UI, TanStack Query, Lucide icons
-│   ├── vite.config.ts              # Code-splitting, path aliases, 0.0.0.0 host binding
+├── frontend/                       # Responsive React + TypeScript client
+│   ├── scripts/smoke-test.cjs      # Browser and real-session smoke checks
+│   ├── vite.config.ts              # Vite dev server with API proxy
 │   └── src/
-│       ├── index.css               # Midnight Studio CSS custom properties & design tokens
-│       ├── components/             # Reusable UI primitives, responsive Sidebar & Header
-│       │   ├── audio/              # HTML5 Range Audio Player with Scrubbing & Speed Control
-│       │   └── layout/             # Responsive AppShell with touch-collapsible navigation
-│       ├── lib/                    # Typed API client with automatic session hydration
-│       └── routes/                 # Lazy-loaded views (/overview, /recordings, /ask)
+│       ├── app/                    # Providers and lazy application routes
+│       ├── features/               # Domain pages and feature components
+│       │   ├── auth/               # Shared authentication layout and forms
+│       │   ├── workspace/          # Overview and fallback pages
+│       │   ├── recordings/         # Library, detail, audio player, upload, export
+│       │   ├── collections/        # Collection management
+│       │   ├── intelligence/       # Ask and semantic search
+│       │   ├── integrations/       # API key management and examples
+│       │   └── settings/           # Profile, preferences, and diagnostics
+│       ├── components/             # Shared UI, layout, and brand visuals
+│       ├── contexts/               # Shared context definitions
+│       ├── hooks/                  # Reusable UI behavior
+│       ├── lib/                    # Typed API client and utilities
+│       └── styles/                 # Theme tokens and responsive layouts
 └── scripts/                        # Utility & orchestration scripts
     ├── start-docker.ps1            # Windows PowerShell Docker Compose startup
     ├── start-docker.sh             # Linux/macOS Docker Compose startup
@@ -152,10 +160,10 @@ VoxMind/
 - Enables instant audio seeking and scrubbing on files of any length without downloading the entire media file.
 - Supports Query Token authentication (`?token=...`) allowing standard HTML5 `<audio>` tags to securely stream authenticated media.
 
-### 5. "Midnight Studio" Design System
-- Modern, calm, developer-focused interface inspired by Linear and Raycast.
-- Tailored color palette: Deep midnight charcoal (`#101116`), primary surfaces (`#181A22`), subtle borders (`#2B2D38`), and refined electric violet accent (`#8B7CFF`).
-- **Strict Viewport Responsiveness**: Fully tested and verified across 1920×1080 (desktop), 1366×768 (laptop), 768×1024 (tablet), and 390×844 (mobile).
+### 5. "Listening Room" Design System
+- A warm, editorial workspace with a custom audio waveform signature, shared typography, and accessible navigation.
+- Ivory (`#F6F5F1`), charcoal (`#202722`), and vermilion (`#B8422C`) define the light theme; a coordinated dark theme and live system preference are also available.
+- **Responsive layouts**: Browser smoke checks cover widths of 320, 390, 768, 1024, 1440, and 1920 pixels, including phone navigation, bounded dialogs, authentication forms, and the recording detail screen.
 
 ### 6. Enterprise Security & Developer Platform
 - **Tenant Isolation**: Every recording, transcript segment, chunk, summary, and vector embedding is strictly scoped to `workspaceId`.
@@ -242,9 +250,8 @@ npm install
 npm run dev
 ```
 
-#### 5. Default Demo Credentials
-- **Email:** `demo@voxmind.dev`
-- **Password:** `DemoPassword123!`
+#### 5. Create your workspace
+Open the registration screen to create a local account, then sign in. The frontend no longer silently authenticates with demo credentials.
 
 ---
 
