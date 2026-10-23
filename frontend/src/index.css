@@ -3,6 +3,7 @@
 @import "./styles/workspace.css";
 @import "./styles/integrations.css";
 @import "./styles/activity.css";
+@import "./styles/recording-detail.css";
 
 @theme {
   --color-background: var(--background);

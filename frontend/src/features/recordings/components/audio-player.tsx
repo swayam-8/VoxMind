@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
+  AudioLines,
   Play,
   Pause,
   RotateCcw,
@@ -162,8 +163,8 @@ export function AudioPlayer({
       {title && (
         <div className="flex items-center justify-between border-b border-border/50 pb-2.5 gap-2 min-w-0">
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs sm:text-sm font-semibold text-text-muted uppercase tracking-wider">
-              Audio Playback Channel
+            <h4 className="player-eyebrow text-xs font-semibold text-text-muted uppercase tracking-wider">
+              <AudioLines aria-hidden="true" /> Audio playback
             </h4>
             <p className="text-sm sm:text-sm font-medium text-text-primary truncate mt-0.5">
               {title}
@@ -181,8 +182,8 @@ export function AudioPlayer({
       <div
         ref={progressBarRef}
         onClick={handleProgressBarClick}
-        className="group relative h-12 sm:h-16 w-full cursor-pointer flex items-end justify-between gap-0.5 sm:gap-1 px-1 select-none overflow-hidden rounded-md bg-surface-2/60 border border-border/40 py-2 hover:border-accent/40 transition-colors"
-        title="Click or drag to seek in recording"
+        className="player-waveform group relative h-12 sm:h-16 w-full cursor-pointer flex items-end justify-between gap-0.5 sm:gap-1 px-1 select-none overflow-hidden rounded-md bg-surface-2/60 border border-border/40 py-2 hover:border-accent/40 transition-colors"
+        title="Click to seek in recording"
       >
         {WAVEFORM_HEIGHTS.map((height, idx) => {
           const barPercent = (idx / WAVEFORM_HEIGHTS.length) * 100;
@@ -217,7 +218,7 @@ export function AudioPlayer({
       </div>
 
       {/* Playback Controls Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+      <div className="player-controls flex flex-wrap items-center justify-between gap-2.5 pt-1">
         {/* Play / Skip Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
@@ -234,7 +235,7 @@ export function AudioPlayer({
             variant="default"
             size="icon"
             onClick={onTogglePlay}
-            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full shadow-md"
+            className="player-play-button h-9 w-9 sm:h-10 sm:w-10 rounded-full shadow-md"
             aria-label={isPlaying ? "Pause playback" : "Play audio recording"}
           >
             {isPlaying ? (

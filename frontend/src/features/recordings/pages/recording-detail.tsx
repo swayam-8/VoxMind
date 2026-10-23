@@ -16,7 +16,9 @@ import {
   RotateCw,
   AlertCircle,
   Send,
-  CheckCircle2,
+  FileText,
+  ListChecks,
+  MessageSquare,
   Target,
   Database,
   Globe,
@@ -29,6 +31,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ActivityIndicator } from "@/components/ui/activity-indicator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InsightSummary, InsightEmptyState } from "../components/insight-summary";
 import { AudioPlayer } from "@/features/recordings/components/audio-player";
 import { toast } from "@/hooks/use-toast";
 import { apiClient, type ApiRecording, type ApiResponse, type ApiRecordingQuestion } from "@/lib/api-client";
@@ -362,17 +365,19 @@ export function RecordingDetailPage() {
   const analysisStatus = recording.analysis_status ?? summary?.status ?? (summary ? "completed" : undefined);
   const analysisBusy = regenerateMutation.isPending || analysisStatus === "pending" || analysisStatus === "processing";
   const audioBusy = ["queued", "processing", "transcribing"].includes(recording.status);
+  const completedActions = actionItems.filter((action) => action.completed).length;
   const insightEmpty = (kind: "decisions" | "actions") => (
-    <div className="insight-empty">
-      <strong>{audioBusy ? "Waiting for your transcript" : analysisBusy ? "Your insights are on their way" : analysisStatus === "failed" ? "Analysis needs another try" : analysisStatus === "completed" ? `No explicit ${kind === "actions" ? "action items" : "decisions"} found` : "Generate insights from this recording"}</strong>
-      <p>{audioBusy ? "Insights become available after the audio is transcribed." : analysisBusy ? "This panel updates automatically when the analysis finishes." : analysisStatus === "failed" ? "The analysis could not finish. Check the message above, then use Regenerate to try again." : analysisStatus === "completed" ? `Only ${kind === "actions" ? "tasks assigned" : "decisions made"} in the conversation appear here.` : "Use Regenerate once the transcript is ready."}</p>
-    </div>
+    <InsightEmptyState
+      busy={audioBusy || analysisBusy}
+      title={audioBusy ? "Waiting for your transcript" : analysisBusy ? "Your insights are on their way" : analysisStatus === "failed" ? "Analysis needs another try" : analysisStatus === "completed" ? `No explicit ${kind === "actions" ? "action items" : "decisions"} found` : "Generate insights from this recording"}
+      description={audioBusy ? "Insights become available after the audio is transcribed." : analysisBusy ? "This panel updates automatically when the analysis finishes." : analysisStatus === "failed" ? "The analysis could not finish. Check the message above, then use Regenerate to try again." : analysisStatus === "completed" ? `Only ${kind === "actions" ? "tasks assigned" : "decisions made"} in the conversation appear here.` : "Use Regenerate once the transcript is ready."}
+    />
   );
 
   return (
     <div className="feature-page recording-detail-page space-y-5 sm:space-y-6 min-w-0 max-w-full">
       {/* Top Navigation & Actions Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 border-b border-border pb-4">
+      <div className="recording-heading flex flex-col xl:flex-row xl:justify-between gap-4 border-b border-border">
         <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
           <Link to="/app/recordings" className="shrink-0 mt-0.5 sm:mt-0">
             <Button
@@ -385,10 +390,11 @@ export function RecordingDetailPage() {
             </Button>
           </Link>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-text-primary truncate max-w-full">
-                {recording.title}
-              </h1>
+            <span className="recording-eyebrow">Recording workspace</span>
+            <h1 className="recording-title text-text-primary">
+              {recording.title}
+            </h1>
+            <div className="recording-badges flex flex-wrap items-center">
               {recording.source_provider && (
                 <Badge variant="outline">
                   Imported from{" "}
@@ -434,21 +440,21 @@ export function RecordingDetailPage() {
               {/* Vector Indexing Status */}
               {recording.index_status === "completed" && (
                 <Badge variant="violet" className="text-xs">
-                  Vector Indexed
+                  Search ready
                 </Badge>
               )}
               {recording.index_status === "indexing" && (
                 <Badge variant="warning" className="text-xs animate-pulse">
-                  Indexing Chunks...
+                  Preparing search...
                 </Badge>
               )}
               {recording.index_status === "failed" && (
                 <Badge variant="danger" className="text-xs">
-                  Index Failed
+                  Search unavailable
                 </Badge>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted mt-1">
+            <div className="recording-meta flex flex-wrap items-center text-xs text-text-muted">
               {recording.collection_name && (
                 <>
                   <span className="flex items-center gap-1 text-text-secondary">
@@ -470,17 +476,17 @@ export function RecordingDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        <div className="recording-tools flex items-center flex-wrap shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={() => reindexMutation.mutate()}
             disabled={reindexMutation.isPending || segments.length === 0}
             className="text-sm h-8"
-            title="Re-chunk transcript and re-generate embeddings"
+            title="Refresh search for this transcript"
           >
             <Database className="w-5 h-5 mr-1.5 text-accent" />
-            <span className="hidden xs:inline">Re-index</span> Vectors
+            Re-index
           </Button>
 
           <Button
@@ -491,7 +497,7 @@ export function RecordingDetailPage() {
             disabled={segments.length === 0}
           >
             <Copy className="w-5 h-5 mr-1.5" />
-            Copy <span className="hidden xs:inline">Transcript</span>
+            Copy text
           </Button>
 
           <DropdownMenu>
@@ -548,11 +554,12 @@ export function RecordingDetailPage() {
       )}
 
       {/* Main 2-Column Responsive Workspace Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-        {/* Left Column: Player & Transcript (7 cols) */}
-        <div className="lg:col-span-7 space-y-5 sm:space-y-6 min-w-0">
+      <div className="recording-workspace">
+        {/* Playback and transcript */}
+        <div className="recording-playback min-w-0">
           {/* Interactive Audio Player with Real Sound Playback */}
           <AudioPlayer
+            className="detail-panel recording-player"
             title={recording.title}
             durationSeconds={recording.duration_seconds || 1}
             currentTime={currentTime}
@@ -570,24 +577,17 @@ export function RecordingDetailPage() {
           />
 
           {/* Interactive Timestamped Transcript Panel */}
-          <div className="rounded-xl border border-border bg-surface-1 p-4 sm:p-5 shadow-sm space-y-4 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                  <Layers className="h-5 w-5 text-accent shrink-0" />
-                  <span>Synchronized Transcript</span>
-                  {recording.language && (
-                    <span className="text-sm font-normal text-text-muted">
-                      ({getLanguageLabel(recording.language)})
-                    </span>
-                  )}
-                </h3>
-                <p className="text-sm text-text-muted mt-0.5">
-                  Click any timestamp to seek playback
-                </p>
+          <div className="detail-panel transcript-panel border border-border space-y-4 min-w-0">
+            <div className="panel-header transcript-header border-b border-border-subtle">
+              <div className="panel-heading">
+                <span className="panel-icon"><Layers aria-hidden="true" /></span>
+                <div>
+                  <h3>Synchronized transcript</h3>
+                  <p>Every word, connected to the moment.</p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="transcript-controls">
                 {/* Auto-scroll toggle */}
                 <button
                   type="button"
@@ -597,6 +597,7 @@ export function RecordingDetailPage() {
                       ? "bg-accent-subtle text-accent border-accent/30"
                       : "bg-surface-2 text-text-muted border-border"
                   }`}
+                  aria-pressed={autoScroll}
                   title="Toggle auto-scroll with audio playback"
                 >
                   <Radio className="w-5 h-5" />
@@ -607,6 +608,7 @@ export function RecordingDetailPage() {
                 <div className="relative flex-1 sm:w-52">
                   <Search className="absolute left-2.5 top-2.5 h-5 w-5 text-text-muted" />
                   <Input
+                    aria-label="Filter transcript"
                     placeholder="Filter dialogue..."
                     value={transcriptSearch}
                     onChange={(e) => setTranscriptSearch(e.target.value)}
@@ -617,7 +619,7 @@ export function RecordingDetailPage() {
             </div>
 
             {/* Segments Scroll Container */}
-            <div className="max-h-[500px] overflow-y-auto space-y-3 pr-1 sm:pr-2 divide-y divide-border/30">
+            <div className="transcript-list max-h-[620px] overflow-y-auto space-y-2">
               {segments.length === 0 ? (
                 <div className="py-12 text-center text-sm text-text-muted space-y-2">
                   {recording.status === "failed" ? (
@@ -656,7 +658,7 @@ export function RecordingDetailPage() {
                     <div
                       key={seg.id}
                       ref={isActive ? activeSegmentRef : undefined}
-                      className={`pt-3 transition-colors rounded-lg p-2.5 -mx-1 sm:-mx-1.5 ${
+                      className={`transcript-segment transition-colors rounded-lg ${
                         isActive
                           ? "bg-accent-subtle/80 border border-accent/40 shadow-xs ring-1 ring-accent/20"
                           : "hover:bg-surface-2/60 border border-transparent"
@@ -692,19 +694,17 @@ export function RecordingDetailPage() {
           </div>
         </div>
 
-        {/* Right Column: AI Insights Hub (5 cols) */}
-        <div className="lg:col-span-5 rounded-xl border border-border bg-surface-1 p-4 sm:p-5 shadow-sm space-y-4 min-w-0">
-          <div className="flex items-center justify-between border-b border-border/50 pb-3 gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Sparkles className="h-5 w-5 text-accent shrink-0" />
-              <h3 className="text-sm font-semibold text-text-primary truncate">
-                Voice Intelligence
-              </h3>
+        {/* Recording insights */}
+        <div className="detail-panel intelligence-panel border border-border space-y-4 min-w-0">
+          <div className="panel-header border-b border-border-subtle">
+            <div className="panel-heading">
+              <span className="panel-icon"><Sparkles aria-hidden="true" /></span>
+              <div>
+                <h3>Voice intelligence</h3>
+                <p>A clearer view of your conversation.</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="violet" className="text-xs font-mono">
-                {summary?.model_name || "llama3.2"}
-              </Badge>
+            <div className="insight-regenerate">
               <Button
                 variant="outline"
                 size="sm"
@@ -712,7 +712,7 @@ export function RecordingDetailPage() {
                 isLoading={regenerateMutation.isPending}
                 disabled={analysisBusy || segments.length === 0}
                 className="h-7 text-sm px-2"
-                title="Regenerate AI analysis with Ollama"
+                title="Generate a fresh summary, decisions, and actions"
               >
                 <RotateCw className="w-5 h-5 mr-1" /> Regenerate
               </Button>
@@ -733,83 +733,39 @@ export function RecordingDetailPage() {
             </div>
           )}
 
-          <Tabs defaultValue="summary" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-9 p-1 text-sm">
-              <TabsTrigger value="summary" className="text-xs sm:text-sm">
-                Summary
-              </TabsTrigger>
-              <TabsTrigger value="decisions" className="text-xs sm:text-sm">
-                Decisions
-              </TabsTrigger>
-              <TabsTrigger value="actions" className="text-xs sm:text-sm">
-                Actions
-              </TabsTrigger>
-              <TabsTrigger value="ask" className="text-xs sm:text-sm">
-                Ask AI
-              </TabsTrigger>
+          <dl className="insight-metrics" aria-label="Recording insights">
+            <div><dt>Key takeaways</dt><dd>{summary?.key_takeaways?.length ?? (analysisStatus === "completed" ? 0 : "—")}</dd></div>
+            <div><dt>Decisions made</dt><dd>{summary?.decisions?.length ?? (analysisStatus === "completed" ? 0 : "—")}</dd></div>
+            <div><dt>Action items</dt><dd>{analysisStatus === "completed" || actionItems.length ? actionItems.length : "—"}</dd></div>
+          </dl>
+
+          <Tabs defaultValue="summary" className="insight-tabs w-full">
+            <TabsList className="insight-tablist w-full" aria-label="Recording features">
+              <TabsTrigger value="summary"><FileText aria-hidden="true" /> Summary</TabsTrigger>
+              <TabsTrigger value="decisions"><Target aria-hidden="true" /> Decisions</TabsTrigger>
+              <TabsTrigger value="actions"><ListChecks aria-hidden="true" /> Actions</TabsTrigger>
+              <TabsTrigger value="ask"><MessageSquare aria-hidden="true" /> Ask AI</TabsTrigger>
             </TabsList>
 
-            {/* Tab 1: Executive Summary & Takeaways */}
-            <TabsContent value="summary" className="space-y-4 pt-3">
-              <div className="p-4 rounded-lg bg-surface-2/60 border border-border space-y-3">
-                <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">
-                  Executive Briefing
-                </h4>
-                <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line break-words">
-                  {summary?.summary_markdown ||
-                    (analysisBusy ? "Your summary is being prepared…" : audioBusy ? "Your summary appears after transcription and analysis." : analysisStatus === "failed" ? "Regenerate the analysis to create a summary." : "Use Regenerate to create a summary from the transcript.")}
-                </p>
-              </div>
-
-              {summary?.key_takeaways && summary.key_takeaways.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckCircle2 className="w-5 h-5 text-accent" /> Key
-                    Takeaways
-                  </h4>
-                  <div className="space-y-1.5">
-                    {summary.key_takeaways.map((point: string, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-2 p-2 rounded-lg bg-surface-2/40 border border-border/40 text-sm text-text-secondary"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
-                        <p className="leading-relaxed break-words">{point}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {summary?.topics && summary.topics.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
-                    Extracted Topics
-                  </h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {summary.topics.map((topic: string, i: number) => (
-                      <Badge key={i} variant="outline" className="text-sm">
-                        #{topic}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <TabsContent value="summary" className="insight-content space-y-5">
+              <InsightSummary summary={summary} placeholder={analysisBusy ? "Your summary is being prepared…" : audioBusy ? "Your summary appears after transcription and analysis." : analysisStatus === "failed" ? "Regenerate the analysis to create a summary." : "Use Regenerate to create a summary from the transcript."} />
             </TabsContent>
 
             {/* Tab 2: Key Decisions */}
-            <TabsContent value="decisions" className="space-y-3 pt-3">
+            <TabsContent value="decisions" className="insight-content space-y-3">
               {!summary?.decisions || summary.decisions.length === 0 ? (
                 insightEmpty("decisions")
               ) : (
-                summary.decisions.map((dec: any, i: number) => {
+                summary.decisions.map((dec, i) => {
                   const ts = dec.source_timestamp ?? dec.sourceTimestamp;
                   return (
                     <div
                       key={i}
-                      className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-2 hover:border-accent/40 transition-colors"
+                      className="insight-card decision-card space-y-2"
+                      style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <span className="decision-index">Decision {String(i + 1).padStart(2, "0")}</span>
+                      <div className="decision-heading flex items-start justify-between gap-2">
                         <div className="flex items-start gap-1.5 min-w-0">
                           <Target className="w-5 h-5 text-accent mt-0.5 shrink-0" />
                           <h5 className="text-sm font-bold text-text-primary leading-snug break-words">
@@ -819,7 +775,7 @@ export function RecordingDetailPage() {
                         {ts !== undefined && ts !== null && (
                           <button
                             onClick={() => handleSeek(Number(ts))}
-                            className="shrink-0 px-1.5 py-0.5 rounded font-mono text-xs text-accent bg-accent-subtle border border-accent/20 hover:bg-accent hover:text-white transition-colors cursor-pointer"
+                            className="source-link shrink-0 font-mono cursor-pointer"
                             title="Seek audio to verified decision source"
                           >
                             [{formatTimestamp(Number(ts))}]
@@ -827,7 +783,7 @@ export function RecordingDetailPage() {
                         )}
                       </div>
                       {dec.context && (
-                        <p className="text-sm text-text-secondary leading-relaxed pl-5 break-words">
+                        <p className="decision-context text-sm text-text-secondary break-words">
                           {dec.context}
                         </p>
                       )}
@@ -838,7 +794,15 @@ export function RecordingDetailPage() {
             </TabsContent>
 
             {/* Tab 3: Action Items Checklist */}
-            <TabsContent value="actions" className="space-y-3 pt-3">
+            <TabsContent value="actions" className="insight-content space-y-3">
+              {!!actionItems.length && (
+                <div className="action-progress">
+                  <div><strong>Follow through</strong><span aria-live="polite">{completedActions} of {actionItems.length} complete</span></div>
+                  <div className="action-progress-track" role="progressbar" aria-label="Completed action items" aria-valuemin={0} aria-valuemax={actionItems.length} aria-valuenow={completedActions}>
+                    <span style={{ width: `${completedActions / actionItems.length * 100}%` }} />
+                  </div>
+                </div>
+              )}
               {actionItems.length === 0 ? (
                 insightEmpty("actions")
               ) : (
@@ -847,11 +811,8 @@ export function RecordingDetailPage() {
                   return (
                     <div
                       key={act.id}
-                      className={`p-3.5 rounded-lg border transition-all space-y-2 ${
-                        act.completed
-                          ? "bg-surface-2/30 border-border opacity-60"
-                          : "bg-surface-2/70 border-border hover:border-accent/30"
-                      }`}
+                      className="insight-card action-card space-y-2"
+                      data-completed={act.completed}
                     >
                       <div className="flex items-start gap-2.5">
                         <input
@@ -880,7 +841,7 @@ export function RecordingDetailPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border/40 gap-2">
+                      <div className="action-meta flex items-center justify-between text-xs text-text-muted border-t border-border/40 gap-2">
                         <span className="text-text-secondary font-medium truncate">
                           Assignee: {act.assignee || "Unassigned"}
                           {act.due_date && <span className="block mt-1">Due: {act.due_date}</span>}
@@ -889,7 +850,7 @@ export function RecordingDetailPage() {
                           <button
                             type="button"
                             onClick={() => handleSeek(Number(ts))}
-                            className="px-1.5 py-0.5 rounded font-mono text-xs text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer shrink-0"
+                            className="source-link font-mono cursor-pointer shrink-0"
                             title="Seek to audio where task was assigned"
                           >
                             [{formatTimestamp(Number(ts))}]
@@ -903,10 +864,15 @@ export function RecordingDetailPage() {
             </TabsContent>
 
             {/* Tab 4: Transcript Question Answering */}
-            <TabsContent value="ask" className="space-y-4 pt-3">
-              <div className="space-y-2">
+            <TabsContent value="ask" className="insight-content space-y-4">
+              <div className="ask-intro">
+                <span className="panel-icon"><MessageSquare aria-hidden="true" /></span>
+                <div><h4>Ask your recording</h4><p>Find the answer. Go back to the source.</p></div>
+              </div>
+              <div className="question-composer space-y-3">
                 <div className="flex gap-2">
                   <Input
+                    id="recording-question"
                     aria-label="Ask about this recording"
                     placeholder="Ask about this recording..."
                     value={questionText}
@@ -934,6 +900,14 @@ export function RecordingDetailPage() {
                     <Send className="w-5 h-5 mr-1" /> Ask
                   </Button>
                 </div>
+                {!questionHistory.length && <div className="question-suggestions" aria-label="Suggested questions">
+                  {["What was decided?", "What should we do next?", "What are the key points?"].map((question) => (
+                    <button key={question} type="button" disabled={askMutation.isPending || !segments.length} onClick={() => {
+                      setQuestionText(question);
+                      document.getElementById("recording-question")?.focus();
+                    }}>{question}</button>
+                  ))}
+                </div>}
                 <p className="text-xs text-text-muted">
                   {segments.length ? "Answers use this recording’s transcript. Evidence links appear when available." : "You can ask a question once the transcript is ready."}
                 </p>
@@ -959,14 +933,14 @@ export function RecordingDetailPage() {
                 {historyLoading && <p role="status" className="text-sm text-text-muted">Loading your conversation…</p>}
                 {historyFailed && <div role="alert" className="space-y-2 text-sm text-danger"><p>Could not load your saved conversation.</p><Button size="sm" variant="outline" onClick={() => reloadHistory()}>Reload conversation</Button></div>}
                 {!historyLoading && !historyFailed && !questionHistory.length && !askMutation.isPending && <p className="text-sm text-text-muted">Ask your first question. Each question and answer will be saved below.</p>}
-                <div ref={conversationRef} className="max-h-[620px] overflow-y-auto space-y-3">
+                <div ref={conversationRef} className="conversation-list max-h-[620px] overflow-y-auto space-y-3">
                 {questionHistory.map((item, index) => (
-                  <article key={item.id} className="answer-reveal rounded-xl border border-border bg-surface-2/50 p-4 space-y-3">
-                    <div className="space-y-1.5">
+                  <article key={item.id} className="conversation-card answer-reveal space-y-4">
+                    <div className="conversation-question space-y-1.5">
                       <span className="text-xs font-semibold uppercase tracking-wider text-accent">Question {index + 1}</span>
                       <p className="text-sm font-semibold text-text-primary break-words whitespace-pre-wrap">{item.question}</p>
                     </div>
-                    <div className="space-y-1.5 border-t border-border/60 pt-3">
+                    <div className="conversation-answer space-y-2">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Answer</span>
                         <Badge variant={item.supported_by_transcript ? "success" : "warning"} className="text-xs">{item.supported_by_transcript ? "Supported by transcript" : "Not Found"}</Badge>

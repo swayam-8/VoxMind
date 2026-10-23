@@ -163,7 +163,7 @@ VoxMind/
 ### 5. "Listening Room" Design System
 - A warm, editorial workspace with a custom audio waveform signature, shared typography, and accessible navigation.
 - White (`#FFFFFF`), slate (`#15233F`), and cobalt (`#3159DF`) define the light theme; a coordinated dark theme and live system preference are also available.
-- **Responsive layouts**: Browser smoke checks cover widths of 320, 390, 768, 1024, 1440, and 1920 pixels, including phone navigation, bounded dialogs, authentication forms, and the recording detail screen.
+- **Responsive layouts**: Browser smoke checks cover widths from 320 to 1920 pixels, including phone navigation, bounded dialogs, authentication forms, and the recording detail screen. `npm run test:layout --prefix frontend` checks all four recording tabs in both themes at seven widths, including long topics, unbroken text, touch targets, and reduced motion.
 
 ### 6. Enterprise Security & Developer Platform
 - **Tenant Isolation**: Every recording, transcript segment, chunk, summary, and vector embedding is strictly scoped to `workspaceId`.
@@ -259,6 +259,8 @@ Open the registration screen to create a local account, then sign in. The fronte
 ## Recording insights, conversation history, and PDF reports
 
 Audio transcription and AI requests display animated activity states, with a reduced-motion alternative. Summary, Decisions, and Actions refresh as processing finishes. If analysis fails, its error and retry action appear instead of a misleading empty result. For older recordings with missing insights, open the recording and choose **Regenerate** once the local AI model is ready.
+
+The recording workspace adapts to the available panel width. Phones show the player, insights, then transcript; wider screens show two columns. Topic tags wrap in full, takeaway cards and tabs animate on entry, and the Actions tab tracks completed tasks. Animation respects your device's reduced-motion preference.
 
 The **Ask AI** tab saves each question and answer below the input, including evidence links, and restores the conversation when you reopen the recording. Conversations belong to the signed-in user in the current workspace. **Export → PDF report — all four sections** opens a complete report with Summary, Decisions, Actions, and every saved question and answer; choose **Save as PDF** in the browser's print dialog. The Markdown export also includes the conversation and full transcript.
 

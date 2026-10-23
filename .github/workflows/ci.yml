@@ -70,6 +70,7 @@ jobs:
             sleep 1
           done
           npm run test:insights
+          npm run test:layout
 
   # ============================================================================
   # 2. Backend: TypeScript Compilation, Security, & Vitest Suite

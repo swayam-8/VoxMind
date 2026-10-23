@@ -14,6 +14,7 @@ export function ActivityIndicator({ kind = "ai", title, description, className }
   return (
     <div className={cn("activity-indicator", className)} data-kind={kind} role="status" aria-live="polite" aria-atomic="true">
       <div className="activity-visual" aria-hidden="true">
+        <span className="activity-halo" />
         <span className="activity-orbit" />
         <span className="activity-orbit activity-orbit-secondary" />
         <div className="activity-wave">
@@ -27,11 +28,12 @@ export function ActivityIndicator({ kind = "ai", title, description, className }
         <span className="activity-core"><Icon /></span>
       </div>
       <div className="activity-copy">
-        <span className="activity-eyebrow">{kind === "audio" ? "Working on your recording" : "A little thought, a clearer answer"}</span>
+        <span className="activity-eyebrow">{kind === "audio" ? "Audio processing" : "VoxMind intelligence"}</span>
         <strong>{title}</strong>
         <p>{description}</p>
         <span className="activity-dots" aria-hidden="true"><i /><i /><i /></span>
       </div>
+      <span className="activity-rail" aria-hidden="true"><span /></span>
     </div>
   );
 }

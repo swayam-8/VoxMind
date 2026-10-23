@@ -11,6 +11,7 @@
     "test:smoke": "node scripts/smoke-test.cjs",
     "test:meetings": "node scripts/meeting-integrations-smoke.cjs",
     "test:insights": "node scripts/insights-smoke.cjs",
+    "test:layout": "node scripts/detail-layout-smoke.cjs",
     "test:report": "node --experimental-strip-types --test scripts/report.test.mjs"
   },
   "dependencies": {
