@@ -22,27 +22,27 @@ export function Header({
             onClick={onToggleSidebar}
             aria-label="Open navigation"
           >
-            <Menu size={20} />
+            <Menu size={24} />
           </button>
           <span className="hidden sm:inline">Workspace</span>
           <ChevronRight size={14} className="hidden sm:block text-text-muted" />
           <span className="truncate text-text-primary">{title}</span>
         </div>
+        <button
+          className="search-trigger"
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search workspace"
+        >
+          <Search size={24} />
+          <span className="search-label">Search your workspace</span>
+          <kbd className="search-shortcut">⌘ K</kbd>
+        </button>
         <div className="header-actions">
-          <button
-            className="search-trigger"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Search workspace"
-          >
-            <Search size={16} />
-            <span className="hidden xl:inline">Search anything</span>
-            <kbd className="hidden xl:inline">⌘ K</kbd>
-          </button>
           <span className="header-divider" />
           <ThemeToggle />
           <Link className="header-help" to="/app/settings#diagnostics">
             <span className="hidden sm:inline">System status</span>
-            <ArrowUpRight size={15} />
+            <ArrowUpRight size={20} />
           </Link>
         </div>
       </header>

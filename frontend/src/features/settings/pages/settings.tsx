@@ -493,7 +493,7 @@ export function SettingsPage() {
                 <p className="text-xs font-bold text-text-primary">
                   Studio dark
                 </p>
-                <p className="text-[10px] text-text-muted">Charcoal & sage</p>
+                <p className="text-[10px] text-text-muted">Graphite & blue</p>
               </div>
             </div>
             {theme === "dark" && (
@@ -516,7 +516,7 @@ export function SettingsPage() {
                 <p className="text-xs font-bold text-text-primary">
                   Paper light
                 </p>
-                <p className="text-[10px] text-text-muted">Ivory & vermilion</p>
+                <p className="text-[10px] text-text-muted">White & blue</p>
               </div>
             </div>
             {theme === "light" && (

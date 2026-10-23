@@ -89,8 +89,8 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
         </DialogDescription>
 
         {/* Search Input Bar */}
-        <div className="flex items-center border-b border-border px-4 py-3">
-          <Search className="h-4 w-4 text-text-muted mr-3 shrink-0" />
+        <div className="flex items-center border-b border-border px-5 py-5">
+          <Search className="h-6 w-6 text-text-muted mr-4 shrink-0" />
           <input
             type="text"
             aria-label="Search recordings and transcripts"
@@ -102,7 +102,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
                 setPassageResults([]);
               }
             }}
-            className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+            className="w-full bg-transparent text-base text-text-primary placeholder:text-text-muted focus:outline-none"
             autoFocus
           />
           <span className="text-[10px] font-mono text-text-muted bg-surface-2 px-1.5 py-0.5 rounded border border-border">

@@ -21,11 +21,11 @@ export function ThemeToggle() {
   const currentIcon = () => {
     switch (theme) {
       case "light":
-        return <Sun className="h-4 w-4 text-warning" />;
+        return <Sun className="h-6 w-6 text-warning" />;
       case "dark":
-        return <Moon className="h-4 w-4 text-accent" />;
+        return <Moon className="h-6 w-6 text-accent" />;
       case "system":
-        return <Monitor className="h-4 w-4 text-text-secondary" />;
+        return <Monitor className="h-6 w-6 text-text-secondary" />;
     }
   };
 
@@ -52,15 +52,15 @@ export function ThemeToggle() {
 
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setTheme("dark" as Theme)}>
-            <Moon className="mr-2 h-4 w-4 text-accent" />
+            <Moon className="mr-2 h-6 w-6 text-accent" />
             <span>Dark</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setTheme("light" as Theme)}>
-            <Sun className="mr-2 h-4 w-4 text-warning" />
+            <Sun className="mr-2 h-6 w-6 text-warning" />
             <span>Light</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setTheme("system" as Theme)}>
-            <Monitor className="mr-2 h-4 w-4 text-text-secondary" />
+            <Monitor className="mr-2 h-6 w-6 text-text-secondary" />
             <span>System Default</span>
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -70,7 +70,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           aria-current={active ? "page" : undefined}
           className={cn("nav-item", active && "is-active")}
         >
-          <Icon size={18} strokeWidth={1.7} />
+          <Icon size={24} strokeWidth={1.8} />
           <span>{label}</span>
           {active && <span className="nav-dot" />}
         </Link>

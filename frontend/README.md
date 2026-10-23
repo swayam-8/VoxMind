@@ -1,6 +1,6 @@
 # VoxMind frontend
 
-React, TypeScript, Vite, and Tailwind. The interface uses an ivory, charcoal, and vermilion palette with an audio waveform signature. Both light and dark themes are supported.
+React, TypeScript, Vite, and Tailwind. The interface uses an white, graphite, and blue palette with an audio waveform signature. Both light and dark themes are supported.
 
 ## Develop
 

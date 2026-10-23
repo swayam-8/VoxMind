@@ -9,7 +9,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <main className="auth-page">
       <aside className="auth-story">
         <Link to="/" className="brand-lockup">
-          <AudioWaveform className="text-[#f3997b]" size={30} />
+          <AudioWaveform className="text-[#8faaff]" size={30} />
           <span>
             voxmind<span className="brand-period">.</span>
           </span>
