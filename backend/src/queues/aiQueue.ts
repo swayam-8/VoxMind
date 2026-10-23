@@ -68,6 +68,26 @@ export function startAiWorker(): Worker<AiJobData> {
           );
 
           // Update or create Summary
+          const normalizedActionItems = (analysis.action_items || []).map((item: any) => ({
+            text: item.text || item.task || String(item),
+            assignee: item.assignee || null,
+            dueDate: item.due_date || item.dueDate || null,
+            due_date: item.due_date || item.dueDate || null,
+            status: item.status || 'pending',
+          }));
+
+          const normalizedDecisions = (analysis.decisions || []).map((d: any) => {
+            if (typeof d === 'string') {
+              return { decision: d, context: null, source_timestamp: null };
+            }
+            return {
+              decision: d.decision || d.text || String(d),
+              context: d.context || null,
+              source_timestamp: d.source_timestamp ?? d.sourceTimestamp ?? null,
+              sourceTimestamp: d.source_timestamp ?? d.sourceTimestamp ?? null,
+            };
+          });
+
           await Summary.findOneAndUpdate(
             { recordingId },
             {
@@ -76,9 +96,9 @@ export function startAiWorker(): Worker<AiJobData> {
                 modelName: analysis.model || 'llama3.2',
                 summaryMarkdown: analysis.summary,
                 keyTakeaways: (analysis.key_takeaways || []).slice(0, 8),
-                decisions: analysis.decisions || [],
+                decisions: normalizedDecisions,
                 topics: analysis.topics || [],
-                actionItems: analysis.action_items || [],
+                actionItems: normalizedActionItems,
                 promptTokens: analysis.prompt_tokens || 0,
                 completionTokens: analysis.completion_tokens || 0,
                 updatedAt: new Date(),
@@ -91,14 +111,14 @@ export function startAiWorker(): Worker<AiJobData> {
           );
 
           // Save ActionItems if present
-          if (analysis.action_items && analysis.action_items.length > 0) {
+          if (normalizedActionItems.length > 0) {
             await ActionItem.deleteMany({ recordingId });
-            const actionDocs = analysis.action_items.map((item) => ({
+            const actionDocs = normalizedActionItems.map((item) => ({
               recordingId,
               workspaceId: recording.workspaceId,
               task: item.text,
               assignee: item.assignee || null,
-              dueDate: item.due_date || null,
+              dueDate: item.dueDate || item.due_date || null,
               status: 'pending',
               priority: 'medium',
             }));

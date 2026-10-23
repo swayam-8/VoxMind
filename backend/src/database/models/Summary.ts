@@ -8,13 +8,20 @@ export interface ISummaryActionItem {
   status?: string;
 }
 
+export interface ISummaryDecision {
+  decision: string;
+  context?: string | null;
+  source_timestamp?: number | null;
+  sourceTimestamp?: number | null;
+}
+
 export interface ISummary {
   _id: string;
   recordingId: string;
   modelName: string;
   summaryMarkdown: string;
   keyTakeaways: string[];
-  decisions: string[];
+  decisions: ISummaryDecision[];
   topics: string[];
   actionItems: ISummaryActionItem[];
   promptTokens: number;
@@ -23,14 +30,25 @@ export interface ISummary {
   updatedAt: Date;
 }
 
-const SummaryActionItemSchema = new Schema<ISummaryActionItem>(
+const SummaryDecisionSchema = new Schema(
+  {
+    decision: { type: String, required: true },
+    context: { type: String, default: null },
+    source_timestamp: { type: Number, default: null },
+    sourceTimestamp: { type: Number, default: null },
+  },
+  { _id: false, strict: false }
+);
+
+const SummaryActionItemSchema = new Schema(
   {
     text: { type: String, required: true },
     assignee: { type: String, default: null },
     dueDate: { type: String, default: null },
+    due_date: { type: String, default: null },
     status: { type: String, default: 'pending' },
   },
-  { _id: false }
+  { _id: false, strict: false }
 );
 
 const SummarySchema = new Schema<ISummary>(
@@ -40,7 +58,7 @@ const SummarySchema = new Schema<ISummary>(
     modelName: { type: String, default: 'llama3.2' },
     summaryMarkdown: { type: String, required: true },
     keyTakeaways: { type: [String], default: [] },
-    decisions: { type: [String], default: [] },
+    decisions: { type: [SummaryDecisionSchema], default: [] },
     topics: { type: [String], default: [] },
     actionItems: { type: [SummaryActionItemSchema], default: [] },
     promptTokens: { type: Number, default: 0 },
