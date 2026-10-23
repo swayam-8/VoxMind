@@ -9,7 +9,9 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:smoke": "node scripts/smoke-test.cjs",
-    "test:meetings": "node scripts/meeting-integrations-smoke.cjs"
+    "test:meetings": "node scripts/meeting-integrations-smoke.cjs",
+    "test:insights": "node scripts/insights-smoke.cjs",
+    "test:report": "node --experimental-strip-types --test scripts/report.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",

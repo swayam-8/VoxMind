@@ -1,4 +1,4 @@
-import { downloadRecordingMarkdown } from "../lib/export-recording";
+import { downloadRecordingMarkdown, printRecordingPdf } from "../lib/export-recording";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,11 +25,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ActivityIndicator } from "@/components/ui/activity-indicator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AudioPlayer } from "@/features/recordings/components/audio-player";
 import { toast } from "@/hooks/use-toast";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type ApiRecording, type ApiResponse, type ApiRecordingQuestion } from "@/lib/api-client";
 
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -89,7 +91,11 @@ export function RecordingDetailPage() {
         status === "processing" ||
         status === "transcribing" ||
         summaryStatus === "pending" ||
-        summaryStatus === "processing";
+        summaryStatus === "processing" ||
+        rec?.analysis_status === "pending" ||
+        rec?.analysis_status === "processing" ||
+        rec?.index_status === "indexing" ||
+        (rec?.analysis_status === "completed" && rec?.index_status === "pending");
       return isProcessing ? 2000 : false;
     },
   });
@@ -128,7 +134,7 @@ export function RecordingDetailPage() {
       toast({
         title: "AI Analysis Enqueued",
         description:
-          "Local Ollama engine has scheduled fresh insight generation.",
+          "Your analysis is in the queue. Results refresh here automatically.",
         variant: "success",
       });
     },
@@ -177,26 +183,46 @@ export function RecordingDetailPage() {
       id
         ? apiClient.toggleActionItem(id, actionId, completed)
         : Promise.reject(new Error("No ID")),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recording", id] });
+    onMutate: ({ actionId, completed }) => {
+      void queryClient.cancelQueries({ queryKey: ["recording", id] });
+      const previous = queryClient.getQueryData<ApiResponse<ApiRecording>>(["recording", id]);
+      queryClient.setQueryData<ApiResponse<ApiRecording>>(["recording", id], (cached) => cached ? {
+        ...cached, data: { ...cached.data, action_items: cached.data.action_items?.map((action) =>
+          action.id === actionId ? { ...action, completed: completed ?? !action.completed } : action,
+        ) },
+      } : cached);
+      return { previous };
     },
+    onError: (error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(["recording", id], context.previous);
+      toast({ title: "Could not update action", description: error.message, variant: "danger" });
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["recording", id] }); },
   });
 
   // Ask question mutation
   const [questionText, setQuestionText] = useState("");
-  const [qaResult, setQaResult] = useState<{
-    question: string;
-    answer: string;
-    supported_by_transcript: boolean;
-    timestamps: number[];
-    model_name: string;
-  } | null>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const { data: historyResponse, isLoading: historyLoading, isFetching: historyFetching, isError: historyFailed, refetch: reloadHistory } = useQuery({
+    queryKey: ["recording-questions", id],
+    queryFn: () => apiClient.getRecordingQuestions(id!),
+    enabled: !!id,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  const questionHistory = historyResponse?.data || [];
 
   const askMutation = useMutation({
     mutationFn: (q: string) =>
       id ? apiClient.askRecording(id, q) : Promise.reject(new Error("No ID")),
     onSuccess: (res) => {
-      setQaResult(res.data);
+      const key = ["recording-questions", res.data.recording_id];
+      queryClient.setQueryData<ApiResponse<ApiRecordingQuestion[]>>(key, (cached) => ({
+        success: true, message: "Conversation saved", data: [
+          ...(cached?.data || []).filter((item) => item.id !== res.data.id), res.data,
+        ],
+      }));
+      queryClient.invalidateQueries({ queryKey: key });
     },
     onError: (err) => {
       toast({
@@ -209,6 +235,13 @@ export function RecordingDetailPage() {
   });
 
   const recording = response?.data;
+
+  useEffect(() => {
+    if (askMutation.isSuccess && conversationRef.current) {
+      conversationRef.current.scrollTo({ top: conversationRef.current.scrollHeight,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    }
+  }, [questionHistory.length, askMutation.isSuccess]);
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -229,25 +262,6 @@ export function RecordingDetailPage() {
     }
   }, [currentTime, autoScroll, isPlaying]);
 
-  // Simulation timer for playback progress
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    const duration = recording?.duration_seconds || 100;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setCurrentTime((prev) => {
-          if (prev >= duration) {
-            setIsPlaying(false);
-            return 0;
-          }
-          return prev + 0.25 * playbackRate;
-        });
-      }, 250);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isPlaying, playbackRate, recording?.duration_seconds]);
 
   const handleSeek = (time: number) => {
     setCurrentTime(time);
@@ -345,6 +359,15 @@ export function RecordingDetailPage() {
 
   const summary = recording.summaries?.[0];
   const actionItems = recording.action_items || [];
+  const analysisStatus = recording.analysis_status ?? summary?.status ?? (summary ? "completed" : undefined);
+  const analysisBusy = regenerateMutation.isPending || analysisStatus === "pending" || analysisStatus === "processing";
+  const audioBusy = ["queued", "processing", "transcribing"].includes(recording.status);
+  const insightEmpty = (kind: "decisions" | "actions") => (
+    <div className="insight-empty">
+      <strong>{audioBusy ? "Waiting for your transcript" : analysisBusy ? "Your insights are on their way" : analysisStatus === "failed" ? "Analysis needs another try" : analysisStatus === "completed" ? `No explicit ${kind === "actions" ? "action items" : "decisions"} found` : "Generate insights from this recording"}</strong>
+      <p>{audioBusy ? "Insights become available after the audio is transcribed." : analysisBusy ? "This panel updates automatically when the analysis finishes." : analysisStatus === "failed" ? "The analysis could not finish. Check the message above, then use Regenerate to try again." : analysisStatus === "completed" ? `Only ${kind === "actions" ? "tasks assigned" : "decisions made"} in the conversation appear here.` : "Use Regenerate once the transcript is ready."}</p>
+    </div>
+  );
 
   return (
     <div className="feature-page recording-detail-page space-y-5 sm:space-y-6 min-w-0 max-w-full">
@@ -471,15 +494,22 @@ export function RecordingDetailPage() {
             Copy <span className="hidden xs:inline">Transcript</span>
           </Button>
 
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => downloadRecordingMarkdown(recording)}
-            className="text-sm h-8"
-          >
-            <Download className="w-5 h-5 mr-1.5" />
-            Export <span className="hidden xs:inline">Markdown</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="sm" className="text-sm h-8"
+                disabled={historyFetching || historyFailed || askMutation.isPending}
+                title="Export summary, decisions, actions, and your saved Q&A">
+                <Download className="w-5 h-5 mr-1.5" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => {
+                try { printRecordingPdf({ ...recording, questions: questionHistory }); }
+                catch (error) { toast({ title: "Could not open report", description: error instanceof Error ? error.message : "Please try again.", variant: "danger" }); }
+              }}>PDF report — all four sections</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => downloadRecordingMarkdown({ ...recording, questions: questionHistory })}>Markdown with transcript</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -510,26 +540,11 @@ export function RecordingDetailPage() {
         </div>
       )}
 
-      {recording.status === "queued" && (
-        <div className="p-3.5 rounded-xl border border-border bg-surface-2/60 flex items-center gap-3">
-          <Clock className="w-5 h-5 text-text-muted shrink-0" />
-          <p className="text-sm text-text-secondary">
-            Recording is queued for background processing. Local faster-whisper
-            transcription will begin automatically.
-          </p>
-        </div>
-      )}
-
-      {(recording.status === "processing" ||
-        recording.status === "transcribing") && (
-        <div className="p-3.5 rounded-xl border border-accent/30 bg-accent-subtle/50 flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
-          <p className="text-sm text-text-primary">
-            Transcribing speech locally with <strong>faster-whisper</strong> in
-            its native language... Live timestamped dialogue segments will
-            appear automatically.
-          </p>
-        </div>
+      {audioBusy && (
+        <ActivityIndicator kind="audio"
+          title={recording.status === "queued" ? "Your recording is in line" : "Listening to your recording"}
+          description={recording.status === "queued" ? "Transcription starts automatically when a worker is available." : "Turning speech into a timestamped transcript. You can keep this page open; results appear automatically."}
+        />
       )}
 
       {/* Main 2-Column Responsive Workspace Grid */}
@@ -695,6 +710,7 @@ export function RecordingDetailPage() {
                 size="sm"
                 onClick={() => regenerateMutation.mutate()}
                 isLoading={regenerateMutation.isPending}
+                disabled={analysisBusy || segments.length === 0}
                 className="h-7 text-sm px-2"
                 title="Regenerate AI analysis with Ollama"
               >
@@ -703,35 +719,17 @@ export function RecordingDetailPage() {
             </div>
           </div>
 
-          {/* Analysis Processing State */}
-          {(summary?.status === "processing" ||
-            summary?.status === "pending") && (
-            <div className="p-3.5 rounded-lg bg-accent-subtle/50 border border-accent/30 flex items-center gap-3">
-              <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
-              <p className="text-sm text-text-primary">
-                Ollama ({summary?.model_name || "llama3.2"}) is analyzing
-                transcript...
-              </p>
-            </div>
+          {analysisBusy && !audioBusy && (
+            <ActivityIndicator
+              title={analysisStatus === "pending" ? "Getting your insights ready" : "Finding the moments that matter"}
+              description="Preparing your summary, decisions, and action items. This panel updates automatically."
+            />
           )}
-
-          {/* Analysis Failed State */}
-          {summary?.status === "failed" && (
-            <div className="p-3 rounded-lg bg-danger-subtle border border-danger/30 flex items-center justify-between gap-2 text-sm">
-              <div className="flex items-center gap-1.5 text-danger min-w-0">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <span className="truncate">
-                  {summary.error_message || "Analysis failed."}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => regenerateMutation.mutate()}
-                className="h-6 text-xs text-danger border-danger/40 hover:bg-danger/10 shrink-0"
-              >
-                Retry
-              </Button>
+          {analysisStatus === "failed" && (
+            <div className="p-4 rounded-lg bg-danger-subtle border border-danger/30 space-y-2" role="alert">
+              <div className="flex items-center gap-2 text-danger font-semibold text-sm"><AlertCircle className="h-5 w-5 shrink-0" /> Analysis could not finish</div>
+              <p className="text-sm text-text-secondary break-words">{recording.analysis_error || summary?.error_message || "Check that the AI model is ready, then regenerate this recording’s analysis."}</p>
+              <Button variant="outline" size="sm" disabled={regenerateMutation.isPending || !segments.length} onClick={() => regenerateMutation.mutate()}>Retry analysis</Button>
             </div>
           )}
 
@@ -759,7 +757,7 @@ export function RecordingDetailPage() {
                 </h4>
                 <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line break-words">
                   {summary?.summary_markdown ||
-                    "Summary pending analysis completion."}
+                    (analysisBusy ? "Your summary is being prepared…" : audioBusy ? "Your summary appears after transcription and analysis." : analysisStatus === "failed" ? "Regenerate the analysis to create a summary." : "Use Regenerate to create a summary from the transcript.")}
                 </p>
               </div>
 
@@ -802,9 +800,7 @@ export function RecordingDetailPage() {
             {/* Tab 2: Key Decisions */}
             <TabsContent value="decisions" className="space-y-3 pt-3">
               {!summary?.decisions || summary.decisions.length === 0 ? (
-                <div className="py-8 text-center text-sm text-text-muted">
-                  No concrete decisions identified in this transcript.
-                </div>
+                insightEmpty("decisions")
               ) : (
                 summary.decisions.map((dec: any, i: number) => {
                   const ts = dec.source_timestamp ?? dec.sourceTimestamp;
@@ -844,9 +840,7 @@ export function RecordingDetailPage() {
             {/* Tab 3: Action Items Checklist */}
             <TabsContent value="actions" className="space-y-3 pt-3">
               {actionItems.length === 0 ? (
-                <div className="py-8 text-center text-sm text-text-muted">
-                  No action items assigned in this transcript.
-                </div>
+                insightEmpty("actions")
               ) : (
                 actionItems.map((act) => {
                   const ts = act.source_timestamp;
@@ -862,6 +856,8 @@ export function RecordingDetailPage() {
                       <div className="flex items-start gap-2.5">
                         <input
                           type="checkbox"
+                          aria-label={`Mark "${act.task}" as ${act.completed ? "incomplete" : "complete"}`}
+                          disabled={toggleActionMutation.isPending || analysisBusy}
                           checked={act.completed}
                           onChange={() =>
                             toggleActionMutation.mutate({
@@ -887,6 +883,7 @@ export function RecordingDetailPage() {
                       <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border/40 gap-2">
                         <span className="text-text-secondary font-medium truncate">
                           Assignee: {act.assignee || "Unassigned"}
+                          {act.due_date && <span className="block mt-1">Due: {act.due_date}</span>}
                         </span>
                         {ts !== undefined && ts !== null && (
                           <button
@@ -910,15 +907,16 @@ export function RecordingDetailPage() {
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input
+                    aria-label="Ask about this recording"
                     placeholder="Ask about this recording..."
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && questionText.trim()) {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing && !askMutation.isPending && questionText.trim() && segments.length) {
                         askMutation.mutate(questionText.trim());
                       }
                     }}
-                    disabled={askMutation.isPending}
+                    disabled={askMutation.isPending || !segments.length}
                     className="h-8 text-sm bg-surface-2 flex-1"
                   />
                   <Button
@@ -930,55 +928,59 @@ export function RecordingDetailPage() {
                       }
                     }}
                     isLoading={askMutation.isPending}
-                    disabled={!questionText.trim()}
+                    disabled={!questionText.trim() || !segments.length}
                     className="h-8 text-sm shrink-0"
                   >
                     <Send className="w-5 h-5 mr-1" /> Ask
                   </Button>
                 </div>
                 <p className="text-xs text-text-muted">
-                  Grounded solely in this recording's transcript without
-                  hallucination.
+                  {segments.length ? "Answers use this recording’s transcript. Evidence links appear when available." : "You can ask a question once the transcript is ready."}
                 </p>
               </div>
 
-              {qaResult && (
-                <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-text-primary">
-                      Answer
-                    </span>
-                    <Badge
-                      variant={
-                        qaResult.supported_by_transcript ? "success" : "warning"
-                      }
-                      className="text-xs"
-                    >
-                      {qaResult.supported_by_transcript
-                        ? "Supported by Transcript"
-                        : "Not Found"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-text-secondary leading-relaxed break-words">
-                    {qaResult.answer}
-                  </p>
-                  {qaResult.timestamps && qaResult.timestamps.length > 0 && (
-                    <div className="pt-2 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs text-text-muted">Evidence:</span>
-                      {qaResult.timestamps.map((t: number, i: number) => (
-                        <button
-                          key={i}
-                          onClick={() => handleSeek(t)}
-                          className="px-1.5 py-0.5 rounded font-mono text-xs text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer"
-                          title="Seek audio to verified evidence"
-                        >
-                          [{formatTimestamp(t)}]
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              {askMutation.isPending && (
+                <div className="space-y-3">
+                  <p className="text-sm text-text-secondary"><strong>Your question:</strong> {askMutation.variables}</p>
+                  <ActivityIndicator title="Thinking through your question" description="Reading this transcript and gathering the evidence for your answer." />
                 </div>
               )}
+              {askMutation.isError && (
+                <div role="alert" className="p-4 rounded-lg border border-danger/30 bg-danger-subtle text-sm space-y-2">
+                  <p>{askMutation.error.message}</p>
+                  <Button size="sm" variant="outline" onClick={() => askMutation.mutate(questionText.trim())} disabled={!questionText.trim()}>Try question again</Button>
+                </div>
+              )}
+              <section aria-label="Saved questions and answers" className="space-y-3">
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+                  <h4 className="text-sm font-semibold text-text-primary">Questions & answers</h4>
+                  <span className="text-xs text-text-muted" aria-live="polite">{questionHistory.length} saved</span>
+                </div>
+                {historyLoading && <p role="status" className="text-sm text-text-muted">Loading your conversation…</p>}
+                {historyFailed && <div role="alert" className="space-y-2 text-sm text-danger"><p>Could not load your saved conversation.</p><Button size="sm" variant="outline" onClick={() => reloadHistory()}>Reload conversation</Button></div>}
+                {!historyLoading && !historyFailed && !questionHistory.length && !askMutation.isPending && <p className="text-sm text-text-muted">Ask your first question. Each question and answer will be saved below.</p>}
+                <div ref={conversationRef} className="max-h-[620px] overflow-y-auto space-y-3">
+                {questionHistory.map((item, index) => (
+                  <article key={item.id} className="answer-reveal rounded-xl border border-border bg-surface-2/50 p-4 space-y-3">
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-accent">Question {index + 1}</span>
+                      <p className="text-sm font-semibold text-text-primary break-words whitespace-pre-wrap">{item.question}</p>
+                    </div>
+                    <div className="space-y-1.5 border-t border-border/60 pt-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Answer</span>
+                        <Badge variant={item.supported_by_transcript ? "success" : "warning"} className="text-xs">{item.supported_by_transcript ? "Supported by transcript" : "Not Found"}</Badge>
+                      </div>
+                      <p className="text-sm text-text-secondary leading-relaxed break-words whitespace-pre-wrap">{item.answer}</p>
+                    </div>
+                    {!!item.timestamps?.length && <div className="flex items-center gap-1.5 flex-wrap border-t border-border/50 pt-2">
+                      <span className="text-xs text-text-muted">Evidence:</span>
+                      {item.timestamps.map((time, index) => <button key={index} onClick={() => handleSeek(time)} className="rounded px-2 py-1 text-xs font-mono text-accent bg-accent-subtle" title="Play this moment">[{formatTimestamp(time)}]</button>)}
+                    </div>}
+                  </article>
+                ))}
+                </div>
+              </section>
             </TabsContent>
           </Tabs>
         </div>

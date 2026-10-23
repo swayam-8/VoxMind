@@ -1,0 +1,76 @@
+.activity-indicator {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 18px;
+  background: linear-gradient(120deg, var(--accent-subtle), var(--surface-1) 70%);
+}
+.activity-visual {
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex: 0 0 104px;
+  height: 104px;
+}
+.activity-orbit {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border-top-color: var(--accent);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: activity-orbit 5s linear infinite;
+}
+.activity-orbit-secondary { inset: 14px; animation: activity-orbit 7s linear infinite reverse; opacity: .6; }
+.activity-core {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--accent);
+  background: var(--surface-1);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: 16px;
+  box-shadow: 0 5px 24px color-mix(in srgb, var(--accent) 15%, transparent);
+  animation: activity-breathe 2.6s ease-in-out infinite;
+}
+.activity-core svg { width: 24px; height: 24px; }
+.activity-wave { position: absolute; display: flex; align-items: center; justify-content: center; gap: 3px; inset: 27px 0; opacity: .24; }
+.activity-wave span { width: 3px; border-radius: 99px; background: var(--accent); transform-origin: center; animation: activity-wave 1.2s ease-in-out infinite; }
+[data-kind="audio"] .activity-visual { flex-basis: 128px; }
+[data-kind="audio"] .activity-wave { opacity: .8; inset: 12px 0; }
+[data-kind="audio"] .activity-core { transform: translateY(30px); width: 34px; height: 34px; border-radius: 12px; animation: none; }
+[data-kind="audio"] .activity-core svg { width: 20px; height: 20px; }
+[data-kind="audio"] .activity-orbit { display: none; }
+.activity-copy { min-width: 0; }
+.activity-eyebrow { display: block; color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 6px; }
+.activity-copy strong { display: block; color: var(--text-primary); font-size: 16px; line-height: 1.4; }
+.activity-copy p { margin-top: 5px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+.activity-dots { display: flex; gap: 5px; margin-top: 12px; }
+.activity-dots i { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: activity-dot 1.5s ease-in-out infinite; }
+.activity-dots i:nth-child(2) { animation-delay: .16s; }
+.activity-dots i:nth-child(3) { animation-delay: .32s; }
+.answer-reveal { animation: answer-reveal .3s ease-out both; }
+.audio-wave-playing { animation: activity-wave 1.2s ease-in-out infinite; transform-origin: center; }
+.insight-empty { padding: 30px 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+.insight-empty strong { display: block; margin-bottom: 5px; color: var(--text-primary); font-size: 14px; }
+@keyframes activity-orbit { to { transform: rotate(360deg); } }
+@keyframes activity-wave { 0%, 100% { transform: scaleY(.4); } 50% { transform: scaleY(1); } }
+@keyframes activity-breathe { 50% { box-shadow: 0 5px 32px color-mix(in srgb, var(--accent) 26%, transparent); } }
+@keyframes activity-dot { 0%, 70%, 100% { opacity: .35; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-3px); } }
+@keyframes answer-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 480px) {
+  .activity-indicator { gap: 12px; padding: 16px 12px; }
+  .activity-visual, [data-kind="audio"] .activity-visual { flex-basis: 76px; height: 86px; }
+  .activity-copy strong { font-size: 14px; }
+  .activity-eyebrow { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .activity-indicator *, .answer-reveal, .audio-wave-playing { animation: none !important; transition: none !important; }
+}

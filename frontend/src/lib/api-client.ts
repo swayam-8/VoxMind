@@ -46,7 +46,7 @@ export interface ApiSummary {
   prompt_version?: string
   summary_markdown: string
   key_takeaways?: string[]
-  decisions: Array<{ decision: string; context?: string; source_timestamp?: number; sourceTimestamp?: number }>
+  decisions: Array<{ decision: string; context?: string | null; source_timestamp?: number | null; sourceTimestamp?: number | null }>
   topics: string[]
   error_message?: string | null
   completed_at?: string | null
@@ -58,10 +58,21 @@ export interface ApiActionItem {
   id: string
   recording_id: string
   task: string
-  assignee?: string
-  due_date?: string
+  assignee?: string | null
+  due_date?: string | null
   completed: boolean
-  source_timestamp?: number
+  source_timestamp?: number | null
+}
+
+export interface ApiRecordingQuestion {
+  id: string
+  recording_id: string
+  question: string
+  answer: string
+  supported_by_transcript: boolean
+  timestamps: number[]
+  model_name: string
+  created_at: string
 }
 
 export interface ApiRecording {
@@ -79,6 +90,8 @@ export interface ApiRecording {
   status: "queued" | "processing" | "transcribing" | "summarizing" | "completed" | "ready" | "failed"
   language?: string | null
   index_status?: "pending" | "indexing" | "completed" | "failed"
+  analysis_status?: "pending" | "processing" | "completed" | "failed"
+  analysis_error?: string | null
   indexed_at?: string | null
   index_error?: string | null
   chunk_count?: number | null
@@ -88,6 +101,7 @@ export interface ApiRecording {
   segments?: ApiTranscriptSegment[]
   summaries?: ApiSummary[]
   action_items?: ApiActionItem[]
+  questions?: ApiRecordingQuestion[]
 }
 
 export interface ApiSearchMatch {
@@ -512,15 +526,12 @@ class ApiClient {
   async askRecording(
     recordingId: string,
     question: string
-  ): Promise<ApiResponse<{
-    recording_id: string
-    question: string
-    answer: string
-    supported_by_transcript: boolean
-    timestamps: number[]
-    model_name: string
-  }>> {
+  ): Promise<ApiResponse<ApiRecordingQuestion>> {
     return this.post(`/recordings/${recordingId}/ask`, { question })
+  }
+
+  async getRecordingQuestions(recordingId: string): Promise<ApiResponse<ApiRecordingQuestion[]>> {
+    return this.get(`/recordings/${recordingId}/questions`)
   }
 
   async toggleActionItem(

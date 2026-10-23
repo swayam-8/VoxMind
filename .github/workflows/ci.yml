@@ -54,6 +54,23 @@ jobs:
       - name: Type check and production build
         run: npm run build
 
+      - name: Verify complete PDF reports
+        run: npm run test:report
+
+      - name: Install browser for insight flow checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify insight animations, saved Q&A and PDF export
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 4173 > /tmp/voxmind-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173 > /dev/null; then break; fi
+            sleep 1
+          done
+          npm run test:insights
+
   # ============================================================================
   # 2. Backend: TypeScript Compilation, Security, & Vitest Suite
   # ============================================================================
@@ -107,6 +124,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r ai-service/requirements.txt
 
       - name: Run Pytest contract and integration suite
@@ -115,4 +133,4 @@ jobs:
           OLLAMA_BASE_URL: http://localhost:11434
           OLLAMA_MODEL: llama3.2
         run: |
-          pytest ai-service/tests/test_ai_service.py -v --tb=short
+          pytest ai-service/tests -v --tb=short

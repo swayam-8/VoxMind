@@ -111,6 +111,7 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
     // A deterministic detail fixture exercises transcript and responsive detail layouts.
     // It is not a substitute for real speech-to-text or model inference tests.
     const now = new Date().toISOString();
+    await page.route("**/api/v1/recordings/frontend-review-fixture/questions", (route) => route.fulfill({ json: { success: true, data: [] } }));
     await page.route("**/api/v1/recordings/frontend-review-fixture", (route) =>
       route.fulfill({
         json: {
@@ -156,6 +157,7 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
       .waitFor();
     const downloadEvent = page.waitForEvent("download");
     await page.getByRole("button", { name: /Export/ }).click();
+    await page.getByRole("menuitem", { name: "Markdown with transcript" }).click();
     const download = await downloadEvent;
     const stream = await download.createReadStream();
     const chunks = [];

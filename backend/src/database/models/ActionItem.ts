@@ -11,6 +11,7 @@ export interface IActionItem {
   task: string;
   assignee: string | null;
   dueDate: string | null;
+  sourceTimestamp: number | null;
   status: ActionItemStatus;
   priority: ActionItemPriority;
   createdAt: Date;
@@ -25,6 +26,7 @@ const ActionItemSchema = new Schema<IActionItem>(
     task: { type: String, required: true, trim: true },
     assignee: { type: String, default: null, trim: true },
     dueDate: { type: String, default: null },
+    sourceTimestamp: { type: Number, default: null },
     status: {
       type: String,
       enum: ['pending', 'in_progress', 'completed', 'cancelled'],

@@ -256,6 +256,12 @@ Open the registration screen to create a local account, then sign in. The fronte
 
 ---
 
+## Recording insights, conversation history, and PDF reports
+
+Audio transcription and AI requests display animated activity states, with a reduced-motion alternative. Summary, Decisions, and Actions refresh as processing finishes. If analysis fails, its error and retry action appear instead of a misleading empty result. For older recordings with missing insights, open the recording and choose **Regenerate** once the local AI model is ready.
+
+The **Ask AI** tab saves each question and answer below the input, including evidence links, and restores the conversation when you reopen the recording. Conversations belong to the signed-in user in the current workspace. **Export → PDF report — all four sections** opens a complete report with Summary, Decisions, Actions, and every saved question and answer; choose **Save as PDF** in the browser's print dialog. The Markdown export also includes the conversation and full transcript.
+
 ## Import from Zoom, Google Meet, and Webex
 
 Open **Integrations** to connect a meeting account and import completed cloud recordings directly into the library. Google Meet recordings are retrieved from Google Drive. Imports run in the background, avoid duplicate copies, and continue through the local transcription and intelligence pipeline. Provider OAuth apps must be configured on the backend first. See [meeting integration setup](docs/meeting-integrations.md) for credentials, scopes, callbacks, limits, and validation.
@@ -273,7 +279,7 @@ npm run build --prefix frontend
 npm run test --prefix backend
 
 # 3. AI Microservice: Pytest Contract & Schema Suite
-$env:PYTHONPATH="ai-service"; pytest ai-service/tests/test_ai_service.py -v
+$env:PYTHONPATH="ai-service"; pytest ai-service/tests -v
 ```
 
 ### GitHub Actions CI

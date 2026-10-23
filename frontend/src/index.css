@@ -2,6 +2,7 @@
 @import "./styles/tokens.css";
 @import "./styles/workspace.css";
 @import "./styles/integrations.css";
+@import "./styles/activity.css";
 
 @theme {
   --color-background: var(--background);

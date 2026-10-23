@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ActivityIndicator } from "@/components/ui/activity-indicator";
 import {
   Select,
   SelectContent,
@@ -80,6 +80,7 @@ export function AskPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [lastQuery, setLastQuery] = useState("");
 
   // Fetch real recordings for scope dropdown
   const { data: recordingsData } = useQuery({
@@ -88,7 +89,7 @@ export function AskPage() {
   });
   const recordings = recordingsData?.data || [];
 
-  const handleSend = async (textToSend?: string) => {
+  const handleSend = async (textToSend?: string, retry = false) => {
     const query = (textToSend || input).trim();
     if (!query || isThinking) return;
 
@@ -96,6 +97,7 @@ export function AskPage() {
     setIsThinking(true);
     setHasError(false);
     setErrorMessage("");
+    setLastQuery(query);
 
     const targetScopeIds = scope === "all" ? undefined : [scope];
 
@@ -130,7 +132,7 @@ export function AskPage() {
       createdAt: timeStr,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    if (!retry) setMessages((prev) => [...prev, userMsg]);
 
     try {
       const res = await apiClient.askKnowledge(query, {
@@ -139,6 +141,7 @@ export function AskPage() {
       });
 
       const data = res.data;
+      if (data.error) throw new Error(data.error);
       const citations: MessageEvidence[] = (data.citations || []).map((c) => ({
         recordingId: c.recording_id,
         recordingTitle: c.recording_title,
@@ -276,7 +279,7 @@ export function AskPage() {
               <div
                 key={msg.id}
                 className={`flex flex-col min-w-0 ${
-                  msg.sender === "user" ? "items-end" : "items-start"
+                  msg.sender === "user" ? "items-end" : "items-start answer-reveal"
                 }`}
               >
                 <div
@@ -410,26 +413,16 @@ export function AskPage() {
           </div>
         )}
 
-        {/* Thinking Skeleton */}
         {isThinking && (
-          <div className="flex flex-col items-start max-w-xl">
-            <div className="rounded-xl border border-border bg-surface-1 p-4 w-full space-y-2.5 animate-pulse">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-accent animate-spin" />
-                <span className="text-sm text-text-muted">
-                  Searching embeddings & synthesizing citations...
-                </span>
-              </div>
-              <Skeleton className="h-3.5 w-3/4" />
-              <Skeleton className="h-3.5 w-full" />
-              <Skeleton className="h-3.5 w-1/2" />
-            </div>
-          </div>
+          <ActivityIndicator className="max-w-xl"
+            title={mode === "search" ? "Finding the right moments" : "Thinking through your question"}
+            description={mode === "search" ? "Looking through your transcripts for relevant passages." : "Reading your recordings and bringing the supporting evidence together."}
+          />
         )}
 
         {/* Error Alert */}
         {hasError && (
-          <div className="p-3 rounded-md bg-danger-subtle border border-danger/30 text-sm text-danger flex items-center justify-between">
+          <div role="alert" className="p-3 rounded-md bg-danger-subtle border border-danger/30 text-sm text-danger flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>
@@ -440,7 +433,7 @@ export function AskPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleSend()}
+              onClick={() => handleSend(lastQuery, true)}
               className="h-7 text-sm"
             >
               <RotateCcw className="w-5 h-5 mr-1" /> Retry

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 import re
 import urllib.error
@@ -149,6 +150,8 @@ class OllamaService:
             except Exception:
                 err_body = str(http_err)
             logger.error("Ollama HTTP Error %s: %s", http_err.code, err_body)
+            if http_err.code == 404:
+                raise OllamaServiceError(f"The AI model '{model}' is not available yet. Wait for its download to finish, then retry.") from http_err
             raise OllamaServiceError(f"Ollama HTTP error {http_err.code}: {err_body}") from http_err
         except urllib.error.URLError as url_err:
             logger.error("Ollama connection error at %s: %s", endpoint, url_err.reason)
@@ -213,97 +216,74 @@ class OllamaService:
         if not isinstance(parsed, dict):
             raise OllamaValidationError("Root output from Ollama must be a JSON object.")
 
-        summary = str(parsed.get("summary", "")).strip()
+        def text(value):
+            if not isinstance(value, str):
+                return None
+            value = value.strip()
+            return value if value and value.lower() not in {"null", "none", "n/a"} else None
+
+        def timestamp(value):
+            if value is None or isinstance(value, bool):
+                return None
+            try:
+                if isinstance(value, str) and ":" in value:
+                    parts = [float(part) for part in value.strip("[] ").split(":")]
+                    if len(parts) not in (2, 3) or any(part < 0 for part in parts) or any(part >= 60 for part in parts[1:]):
+                        return None
+                    result = sum(part * 60 ** index for index, part in enumerate(reversed(parts)))
+                else:
+                    result = float(value)
+                return result if math.isfinite(result) and result >= 0 else None
+            except (TypeError, ValueError):
+                return None
+
+        summary = text(parsed.get("summary"))
+        if not summary:
+            raise OllamaValidationError("The AI returned an empty summary. Please regenerate the analysis.")
 
         raw_takeaways = parsed.get("key_takeaways", [])
         key_takeaways = []
         if isinstance(raw_takeaways, list):
-            seen_t = set()
-            for t in raw_takeaways:
-                s = str(t.get("decision") if isinstance(t, dict) else t).strip()
-                if s and s not in seen_t and len(s) > 3:
-                    seen_t.add(s)
-                    key_takeaways.append(s)
+            for item in raw_takeaways:
+                value = text(item.get("takeaway") or item.get("text") or item.get("decision")) if isinstance(item, dict) else text(item)
+                if value and value not in key_takeaways:
+                    key_takeaways.append(value)
 
         raw_decisions = parsed.get("decisions", [])
         decisions = []
+        seen_decisions = set()
         if isinstance(raw_decisions, list):
-            seen_d = set()
-            for d in raw_decisions:
-                if isinstance(d, dict):
-                    text = str(d.get("decision", "")).strip()
-                    if text and text not in seen_d and text != "Agreed decision":
-                        seen_d.add(text)
-                        ts = d.get("source_timestamp") or d.get("sourceTimestamp")
-                        decisions.append({
-                            "decision": text,
-                            "context": str(d.get("context", "")).strip() or None,
-                            "source_timestamp": float(ts) if ts is not None and str(ts).replace(".", "", 1).isdigit() else None,
-                        })
-                elif isinstance(d, str) and d.strip() and d.strip() not in seen_d:
-                    seen_d.add(d.strip())
-                    decisions.append({
-                        "decision": d.strip(),
-                        "context": None,
-                        "source_timestamp": None,
-                    })
+            for item in raw_decisions:
+                value = text(item.get("decision") or item.get("text")) if isinstance(item, dict) else text(item)
+                if not value or value in seen_decisions:
+                    continue
+                seen_decisions.add(value)
+                decisions.append({
+                    "decision": value,
+                    "context": text(item.get("context")) if isinstance(item, dict) else None,
+                    "source_timestamp": timestamp(item.get("source_timestamp", item.get("sourceTimestamp"))) if isinstance(item, dict) else None,
+                })
 
         raw_actions = parsed.get("action_items", [])
         action_items = []
+        seen_actions = set()
         if isinstance(raw_actions, list):
-            seen_a = set()
-            for a in raw_actions:
-                if isinstance(a, dict):
-                    task = str(a.get("task", "")).strip()
-                    if task and task not in seen_a:
-                        seen_a.add(task)
-                        ts = a.get("source_timestamp") or a.get("sourceTimestamp")
-                        action_items.append({
-                            "task": task,
-                            "assignee": str(a.get("assignee", "")).strip() or None,
-                            "due_date": str(a.get("due_date", "")).strip() or None,
-                            "completed": bool(a.get("completed", False)),
-                            "source_timestamp": float(ts) if ts is not None and str(ts).replace(".", "", 1).isdigit() else None,
-                        })
-                elif isinstance(a, str) and a.strip() and a.strip() not in seen_a:
-                    seen_a.add(a.strip())
-                    action_items.append({
-                        "task": a.strip(),
-                        "assignee": None,
-                        "due_date": None,
-                        "completed": false,
-                        "source_timestamp": None,
-                    })
+            for item in raw_actions:
+                value = text(item.get("task") or item.get("text") or item.get("action")) if isinstance(item, dict) else text(item)
+                if not value or value in seen_actions:
+                    continue
+                seen_actions.add(value)
+                completed = item.get("completed", False) if isinstance(item, dict) else False
+                action_items.append({
+                    "task": value,
+                    "assignee": text(item.get("assignee")) if isinstance(item, dict) else None,
+                    "due_date": text(item.get("due_date", item.get("dueDate"))) if isinstance(item, dict) else None,
+                    "completed": completed is True or (isinstance(completed, str) and completed.lower() == "true"),
+                    "source_timestamp": timestamp(item.get("source_timestamp", item.get("sourceTimestamp"))) if isinstance(item, dict) else None,
+                })
 
         raw_topics = parsed.get("topics", [])
-        topics = [str(top).strip() for top in raw_topics if str(top).strip()] if isinstance(raw_topics, list) else []
-
-        # If model generated decisions inside key_takeaways (common with LLaMA 3.2), infer decisions
-        if not decisions and isinstance(raw_takeaways, list):
-            for t in raw_takeaways:
-                if isinstance(t, dict) and "decision" in t:
-                    decisions.append({
-                        "decision": str(t["decision"]).strip(),
-                        "context": str(t.get("context", "")).strip() or None,
-                        "source_timestamp": None,
-                    })
-
-        # Ensure fallback items so UI tabs are never completely empty for processed recordings
-        if not decisions and summary:
-            decisions.append({
-                "decision": f"Key finding: {summary[:120]}",
-                "context": "Synthesized from audio transcript analysis",
-                "source_timestamp": None,
-            })
-
-        if not action_items:
-            action_items.append({
-                "task": "Review transcript findings and circulate takeaways to stakeholders",
-                "assignee": "Workspace Lead",
-                "due_date": "Next sprint",
-                "completed": False,
-                "source_timestamp": None,
-            })
+        topics = list(dict.fromkeys(filter(None, (text(item) for item in raw_topics)))) if isinstance(raw_topics, list) else []
 
         return {
             "summary": summary,
@@ -339,8 +319,10 @@ class OllamaService:
             '  "topics": ["topic1", "topic2", "topic3"]\n'
             "}\n"
             "Strict rules:\n"
-            "- Always identify at least 1-3 concrete action items or next steps implied or stated in the transcript.\n"
-            "- Always identify at least 1-2 decisions or conclusions.\n"
+            "- Include only tasks or next steps explicitly committed to in the transcript. Return [] when none are stated.\n"
+            "- Include only explicit decisions or agreements, not general findings. Return [] when none were made.\n"
+            "- Do not invent decisions, tasks, assignees, or deadlines. Use null for unstated owners and dates.\n"
+            "- Source timestamps must be seconds from the transcript labels; use null when uncertain.\n"
             "- Do not repeat items.\n"
             "- Return strictly valid JSON."
         )
@@ -391,19 +373,25 @@ class OllamaService:
             json_format=True,
         )
 
-        cleaned = cls._clean_json_markdown(raw_output)
-        try:
-            data = json.loads(cleaned)
-        except Exception:
-            data = {
-                "answer": cleaned,
-                "supported_by_transcript": True,
-                "timestamps": [],
-            }
+        data = cls._repair_json(raw_output)
+        if not data or not isinstance(data.get("answer"), str) or not data["answer"].strip():
+            raise OllamaServiceError("The AI returned an incomplete answer. Please retry your question.")
+
+        timestamps = []
+        if isinstance(data.get("timestamps"), list):
+            for value in data["timestamps"]:
+                if isinstance(value, bool):
+                    continue
+                try:
+                    timestamp = float(value)
+                    if math.isfinite(timestamp) and timestamp >= 0 and timestamp not in timestamps:
+                        timestamps.append(timestamp)
+                except (TypeError, ValueError):
+                    continue
 
         return {
             "answer": str(data.get("answer", "")).strip(),
-            "supported_by_transcript": bool(data.get("supported_by_transcript", True)),
-            "timestamps": [float(t) for t in data.get("timestamps", []) if str(t).replace(".", "", 1).isdigit()],
+            "supported_by_transcript": data.get("supported_by_transcript") is True,
+            "timestamps": timestamps,
             "model_name": model_name or cfg["model"],
         }

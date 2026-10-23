@@ -13,8 +13,27 @@ import { audioQueue } from '../../queues/audioQueue.js';
 import { aiQueue } from '../../queues/aiQueue.js';
 import { AiServiceClient } from '../../services/aiServiceClient.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import { getAnalysisState } from '../../services/analysisState.js';
+import { RecordingQuestion } from '../../database/models/RecordingQuestion.js';
 
 export class RecordingsController {
+  static async getQuestions(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const recordingId = req.params.id;
+      const workspaceId = req.workspaceId!;
+      if (!(await Recording.exists({ _id: recordingId, workspaceId }))) {
+        throw new AppError('Recording not found', 404, 'RECORDING_NOT_FOUND');
+      }
+      const questions = await RecordingQuestion.find({ recordingId, workspaceId, userId: req.user!._id })
+        .sort({ createdAt: 1, _id: 1 }).lean();
+      return res.json({ success: true, data: questions.map((item) => ({
+        id: item._id, recording_id: item.recordingId, question: item.question, answer: item.answer,
+        supported_by_transcript: item.supportedByTranscript, timestamps: item.timestamps,
+        model_name: item.modelName, created_at: item.createdAt.toISOString(),
+      })) });
+    } catch (error) { next(error); }
+  }
+
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const workspaceId = req.workspaceId!;
@@ -224,6 +243,8 @@ export class RecordingsController {
         language: recording.language,
         index_status: recording.indexStatus,
         indexStatus: recording.indexStatus,
+        analysis_status: getAnalysisState(recording, Boolean(summary?.summaryMarkdown?.trim())).status,
+        analysis_error: getAnalysisState(recording, Boolean(summary?.summaryMarkdown?.trim())).error_message,
         created_at: recording.createdAt.toISOString(),
         createdAt: recording.createdAt.toISOString(),
         updated_at: recording.updatedAt.toISOString(),
@@ -247,7 +268,8 @@ export class RecordingsController {
                 id: summary._id,
                 recording_id: summary.recordingId,
                 model_name: summary.modelName,
-                status: 'completed',
+                status: getAnalysisState(recording, Boolean(summary.summaryMarkdown?.trim())).status,
+                error_message: getAnalysisState(recording, Boolean(summary.summaryMarkdown?.trim())).error_message,
                 summary_markdown: summary.summaryMarkdown,
                 key_takeaways: summary.keyTakeaways || [],
                 decisions: (summary.decisions || []).map((d: any) => typeof d === 'string' ? { decision: d } : d),
@@ -284,6 +306,7 @@ export class RecordingsController {
           dueDate: a.dueDate,
           status: a.status,
           completed: a.status === 'completed',
+          source_timestamp: a.sourceTimestamp ?? null,
           priority: a.priority,
         })),
       };
@@ -362,7 +385,8 @@ export class RecordingsController {
         id: summary._id,
         recording_id: summary.recordingId,
         model_name: summary.modelName,
-        status: 'completed',
+        status: getAnalysisState(recording, Boolean(summary.summaryMarkdown?.trim())).status,
+        error_message: getAnalysisState(recording, Boolean(summary.summaryMarkdown?.trim())).error_message,
         summary_markdown: summary.summaryMarkdown,
         key_takeaways: summary.keyTakeaways || [],
         decisions: (summary.decisions || []).map((d: any) => typeof d === 'string' ? { decision: d } : d),
@@ -376,6 +400,7 @@ export class RecordingsController {
           assignee: a.assignee,
           due_date: a.dueDate,
           completed: a.status === 'completed',
+          source_timestamp: a.sourceTimestamp ?? null,
         })),
       };
 
@@ -405,7 +430,7 @@ export class RecordingsController {
       const payload = {
         recording_id: id,
         summary_id: summary?._id || undefined,
-        status: summary ? 'completed' : recording.status === 'processing' ? 'processing' : 'pending',
+        ...getAnalysisState(recording, Boolean(summary?.summaryMarkdown?.trim())),
         model_name: summary?.modelName || 'llama3.2',
         completed_at: summary?.updatedAt ? summary.updatedAt.toISOString() : undefined,
       };
@@ -431,13 +456,31 @@ export class RecordingsController {
         throw new AppError('Recording not found', 404, 'RECORDING_NOT_FOUND');
       }
 
-      // Re-enqueue AI analysis job
-      await aiQueue.add('analyze-recording', { recordingId: id });
+      if (!(await TranscriptSegment.exists({ recordingId: id }))) {
+        throw new AppError('Transcribe the recording before generating insights.', 400, 'TRANSCRIPT_EMPTY');
+      }
+      // Claim the request atomically so repeated clicks cannot enqueue duplicate analyses.
+      const claimed = await Recording.findOneAndUpdate(
+        { _id: id, workspaceId, analysisStatus: { $nin: ['pending', 'processing'] } },
+        { $set: { analysisStatus: 'pending', analysisErrorMessage: null } },
+      );
+      if (claimed) {
+        try {
+          await aiQueue.add('analyze-recording', { recordingId: id }, {
+            jobId: `analysis-${id}`, removeOnComplete: true, removeOnFail: true,
+          });
+        } catch {
+          await Recording.updateOne({ _id: id }, { $set: {
+            analysisStatus: 'failed', analysisErrorMessage: 'Could not queue analysis. Check the background worker connection and retry.',
+          } });
+          throw new AppError('Could not queue analysis. Check the background worker connection and retry.', 503, 'QUEUE_UNAVAILABLE');
+        }
+      }
 
       return res.json({
         success: true,
         message: 'Analysis regeneration queued',
-        data: { recording_id: id, status: 'processing' },
+        data: { recording_id: id, status: 'pending' },
       });
     } catch (error) {
       next(error);
@@ -470,6 +513,7 @@ export class RecordingsController {
         assignee: actionItem.assignee,
         due_date: actionItem.dueDate,
         completed: actionItem.status === 'completed',
+        source_timestamp: actionItem.sourceTimestamp ?? null,
         status: actionItem.status,
       };
 
@@ -545,6 +589,7 @@ export class RecordingsController {
       await TranscriptChunk.deleteMany({ recordingId: id });
       await Summary.deleteMany({ recordingId: id });
       await ActionItem.deleteMany({ recordingId: id });
+      await RecordingQuestion.deleteMany({ recordingId: id, workspaceId });
       await Recording.deleteOne({ _id: id });
 
       return res.json({
@@ -571,6 +616,8 @@ export class RecordingsController {
       recording.status = 'queued';
       recording.errorMessage = null;
       recording.indexStatus = 'pending';
+      recording.analysisStatus = null;
+      recording.analysisErrorMessage = null;
       await recording.save();
 
       const job = await audioQueue.add('transcribe-audio', { recordingId: recording._id });
@@ -668,7 +715,7 @@ export class RecordingsController {
         throw new AppError('Recording transcript is empty or still processing', 400, 'TRANSCRIPT_EMPTY');
       }
 
-      const fullTranscript = segments.map((s) => `${s.speaker}: ${s.text}`).join('\n');
+      const fullTranscript = segments.map((s) => `[${s.startTime.toFixed(2)}s] ${s.speaker}: ${s.text}`).join('\n');
       const startTime = Date.now();
 
       const answerRes = await AiServiceClient.askQuestion(
@@ -678,6 +725,12 @@ export class RecordingsController {
       );
 
       const durationSeconds = (Date.now() - startTime) / 1000;
+
+      const savedQuestion = await RecordingQuestion.create({
+        recordingId: id, workspaceId, userId: req.user!._id, question,
+        answer: answerRes.answer, supportedByTranscript: answerRes.supported_by_transcript,
+        timestamps: answerRes.timestamps, modelName: answerRes.model_name,
+      });
 
       // Record usage
       await ApiUsageRecord.create({
@@ -698,9 +751,11 @@ export class RecordingsController {
         recordingId: id,
         question,
         answer: answerRes.answer,
-        supported_by_transcript: true,
-        timestamps: [],
-        model_name: 'llama3.2',
+        id: savedQuestion._id,
+        created_at: savedQuestion.createdAt.toISOString(),
+        supported_by_transcript: answerRes.supported_by_transcript,
+        timestamps: answerRes.timestamps,
+        model_name: answerRes.model_name,
         prompt_tokens: answerRes.prompt_tokens,
         completion_tokens: answerRes.completion_tokens,
       };

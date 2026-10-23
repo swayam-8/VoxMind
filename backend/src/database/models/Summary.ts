@@ -6,6 +6,7 @@ export interface ISummaryActionItem {
   assignee?: string;
   dueDate?: string;
   status?: string;
+  sourceTimestamp?: number | null;
 }
 
 export interface ISummaryDecision {
@@ -47,6 +48,7 @@ const SummaryActionItemSchema = new Schema(
     dueDate: { type: String, default: null },
     due_date: { type: String, default: null },
     status: { type: String, default: 'pending' },
+    sourceTimestamp: { type: Number, default: null },
   },
   { _id: false, strict: false }
 );

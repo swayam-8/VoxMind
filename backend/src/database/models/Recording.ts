@@ -3,6 +3,7 @@ import crypto from 'crypto';
 
 export type RecordingStatus = 'queued' | 'processing' | 'completed' | 'failed';
 export type IndexStatus = 'pending' | 'indexing' | 'completed' | 'failed';
+export type AnalysisStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface IRecording {
   _id: string;
@@ -21,6 +22,8 @@ export interface IRecording {
   errorMessage: string | null;
   language: string | null;
   indexStatus: IndexStatus;
+  analysisStatus: AnalysisStatus | null;
+  analysisErrorMessage: string | null;
   transcriptionJobId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +58,12 @@ const RecordingSchema = new Schema<IRecording>(
       index: true,
     },
     transcriptionJobId: { type: String, default: null },
+    analysisStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+      default: null,
+    },
+    analysisErrorMessage: { type: String, default: null },
   },
   {
     timestamps: true,

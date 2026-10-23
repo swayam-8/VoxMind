@@ -1,10 +1,18 @@
 import axios from 'axios';
 import path from 'path';
 import { config } from '../config/index.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 const client = axios.create({
   baseURL: config.aiServiceUrl,
   timeout: 600000, // 10 minutes timeout for heavy AI tasks
+});
+
+client.interceptors.response.use(undefined, (error: unknown) => {
+  const detail = axios.isAxiosError(error) ? error.response?.data?.detail : null;
+  const message = typeof detail === 'string' ? detail :
+    'The AI service could not finish this request. Check that the service and its models are ready, then try again.';
+  return Promise.reject(new AppError(message, 503, 'AI_SERVICE_UNAVAILABLE'));
 });
 
 export interface TranscribeResponse {
@@ -31,6 +39,7 @@ export interface AnalyzeResponse {
     due_date?: string;
     completed?: boolean;
     status?: string;
+    source_timestamp?: number | null;
   }>;
   topics: string[];
   prompt_tokens: number;
@@ -130,6 +139,7 @@ export class AiServiceClient {
         assignee: item.assignee || null,
         due_date: item.due_date || null,
         status: item.completed ? 'completed' : 'pending',
+        source_timestamp: item.source_timestamp ?? null,
       })),
       topics: d.topics || [],
       prompt_tokens: d.prompt_tokens || 0,
@@ -172,7 +182,7 @@ export class AiServiceClient {
     transcriptText: string,
     question: string,
     title?: string
-  ): Promise<{ answer: string; prompt_tokens: number; completion_tokens: number }> {
+  ): Promise<{ answer: string; supported_by_transcript: boolean; timestamps: number[]; model_name: string; prompt_tokens: number; completion_tokens: number }> {
     const res = await client.post('/ask', {
       transcript_text: transcriptText,
       question,
@@ -180,6 +190,9 @@ export class AiServiceClient {
     });
     return {
       answer: res.data.answer || '',
+      supported_by_transcript: res.data.supported_by_transcript === true,
+      timestamps: res.data.timestamps || [],
+      model_name: res.data.model_name || 'llama3.2',
       prompt_tokens: res.data.prompt_tokens || 0,
       completion_tokens: res.data.completion_tokens || 0,
     };

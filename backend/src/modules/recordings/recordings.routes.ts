@@ -26,6 +26,7 @@ router.delete('/:id', RecordingsController.delete);
 router.post('/:id/retry', RecordingsController.retry);
 router.get('/:id/audio', RecordingsController.getAudio);
 router.post('/:id/ask', validateRequest({ body: askRecordingSchema }), RecordingsController.ask);
+router.get('/:id/questions', RecordingsController.getQuestions);
 
 // Transcript & Analysis sub-resources
 router.get('/:id/transcript', RecordingsController.getTranscript);

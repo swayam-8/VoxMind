@@ -1,12 +1,6 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { getRedisConnection } from './connection.js';
-import { Recording } from '../database/models/Recording.js';
-import { TranscriptSegment } from '../database/models/TranscriptSegment.js';
-import { TranscriptChunk } from '../database/models/TranscriptChunk.js';
-import { Summary } from '../database/models/Summary.js';
-import { ActionItem } from '../database/models/ActionItem.js';
-import { ApiUsageRecord } from '../database/models/ApiUsageRecord.js';
-import { AiServiceClient } from '../services/aiServiceClient.js';
+import { processRecordingAnalysis } from '../services/recordingAnalysis.js';
 import { logger } from '../middleware/requestLogger.js';
 
 export interface AiJobData {
@@ -28,179 +22,16 @@ export const aiQueue = new Queue<AiJobData>('ai-processing', {
   },
 });
 
+export async function processAiJob(job: Job<AiJobData>) {
+  const { recordingId } = job.data;
+  logger.info({ recordingId, jobId: job.id }, 'Starting AI analysis & indexing job');
+  // Persist pending throughout backoff so a polling request cannot mistake a retry for a terminal failure.
+  await processRecordingAnalysis(recordingId, { retryPending: job.attemptsMade + 1 < (job.opts.attempts || 1) });
+}
+
 export function startAiWorker(): Worker<AiJobData> {
   const worker = new Worker<AiJobData>(
-    'ai-processing',
-    async (job: Job<AiJobData>) => {
-      const { recordingId } = job.data;
-      logger.info({ recordingId, jobId: job.id }, 'Starting AI analysis & indexing job');
-
-      const recording = await Recording.findById(recordingId);
-      if (!recording) {
-        throw new Error(`Recording ${recordingId} not found`);
-      }
-
-      recording.indexStatus = 'indexing';
-      await recording.save();
-
-      const startTime = Date.now();
-
-      try {
-        // Fetch all segments
-        const segments = await TranscriptSegment.find({ recordingId })
-          .sort({ segmentIndex: 1 })
-          .lean();
-
-        if (segments.length === 0) {
-          logger.warn({ recordingId }, 'No segments found to analyze');
-          recording.indexStatus = 'completed';
-          await recording.save();
-          return;
-        }
-
-        const fullTranscriptText = segments.map((s) => `${s.speaker}: ${s.text}`).join('\n');
-
-        // 1. Generate Summary & Action Items via AI service
-        try {
-          const analysis = await AiServiceClient.analyzeTranscript(
-            fullTranscriptText,
-            recording.title
-          );
-
-          // Update or create Summary
-          const normalizedActionItems = (analysis.action_items || []).map((item: any) => ({
-            text: item.text || item.task || String(item),
-            assignee: item.assignee || null,
-            dueDate: item.due_date || item.dueDate || null,
-            due_date: item.due_date || item.dueDate || null,
-            status: item.status || 'pending',
-          }));
-
-          const normalizedDecisions = (analysis.decisions || []).map((d: any) => {
-            if (typeof d === 'string') {
-              return { decision: d, context: null, source_timestamp: null };
-            }
-            return {
-              decision: d.decision || d.text || String(d),
-              context: d.context || null,
-              source_timestamp: d.source_timestamp ?? d.sourceTimestamp ?? null,
-              sourceTimestamp: d.source_timestamp ?? d.sourceTimestamp ?? null,
-            };
-          });
-
-          await Summary.findOneAndUpdate(
-            { recordingId },
-            {
-              $set: {
-                recordingId,
-                modelName: analysis.model || 'llama3.2',
-                summaryMarkdown: analysis.summary,
-                keyTakeaways: (analysis.key_takeaways || []).slice(0, 8),
-                decisions: normalizedDecisions,
-                topics: analysis.topics || [],
-                actionItems: normalizedActionItems,
-                promptTokens: analysis.prompt_tokens || 0,
-                completionTokens: analysis.completion_tokens || 0,
-                updatedAt: new Date(),
-              },
-              $setOnInsert: {
-                createdAt: new Date(),
-              },
-            },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-          );
-
-          // Save ActionItems if present
-          if (normalizedActionItems.length > 0) {
-            await ActionItem.deleteMany({ recordingId });
-            const actionDocs = normalizedActionItems.map((item) => ({
-              recordingId,
-              workspaceId: recording.workspaceId,
-              task: item.text,
-              assignee: item.assignee || null,
-              dueDate: item.dueDate || item.due_date || null,
-              status: 'pending',
-              priority: 'medium',
-            }));
-            await ActionItem.insertMany(actionDocs);
-          }
-
-          // Record usage for summary
-          await ApiUsageRecord.create({
-            workspaceId: recording.workspaceId,
-            userId: recording.userId,
-            resourceType: 'summary',
-            model: analysis.model || 'llama3.2',
-            promptTokens: analysis.prompt_tokens || 0,
-            completionTokens: analysis.completion_tokens || 0,
-            totalTokens: (analysis.prompt_tokens || 0) + (analysis.completion_tokens || 0),
-            durationSeconds: (Date.now() - startTime) / 1000,
-            statusCode: 200,
-          });
-        } catch (aiErr: any) {
-          logger.error({ recordingId, err: aiErr.message }, 'AI analysis summary failed');
-        }
-
-        // 2. Transcript Chunking & Vector Embeddings
-        try {
-          const chunkRes = await AiServiceClient.chunkTranscript(
-            segments.map((s) => ({
-              start: s.startTime,
-              end: s.endTime,
-              speaker: s.speaker,
-              text: s.text,
-            }))
-          );
-
-          if (chunkRes.chunks && chunkRes.chunks.length > 0) {
-            const texts = chunkRes.chunks.map((c) => c.text);
-            const embedRes = await AiServiceClient.generateEmbeddings(texts);
-
-            // Delete old chunks
-            await TranscriptChunk.deleteMany({ recordingId });
-
-            const chunkDocs = chunkRes.chunks.map((c, idx) => ({
-              recordingId,
-              workspaceId: recording.workspaceId,
-              chunkIndex: c.chunk_index,
-              startTime: c.start_time,
-              endTime: c.end_time,
-              speaker: c.speaker,
-              text: c.text,
-              tokenCount: c.token_count,
-              embedding: embedRes.embeddings[idx] || [],
-            }));
-
-            await TranscriptChunk.insertMany(chunkDocs);
-
-            // Record usage for embedding
-            await ApiUsageRecord.create({
-              workspaceId: recording.workspaceId,
-              userId: recording.userId,
-              resourceType: 'embedding',
-              model: embedRes.model || 'all-MiniLM-L6-v2',
-              promptTokens: chunkDocs.reduce((acc, c) => acc + (c.tokenCount || 0), 0),
-              completionTokens: 0,
-              totalTokens: chunkDocs.reduce((acc, c) => acc + (c.tokenCount || 0), 0),
-              durationSeconds: (Date.now() - startTime) / 1000,
-              statusCode: 200,
-            });
-          }
-        } catch (embedErr: any) {
-          logger.error({ recordingId, err: embedErr.message }, 'Vector chunking/embedding failed');
-        }
-
-        recording.indexStatus = 'completed';
-        await recording.save();
-
-        logger.info({ recordingId }, 'AI analysis & indexing completed successfully');
-      } catch (err: any) {
-        logger.error({ recordingId, err: err.message }, 'AI analysis job failed');
-        recording.indexStatus = 'failed';
-        await recording.save();
-        throw err;
-      }
-    },
+    'ai-processing', processAiJob,
     { connection, concurrency: 2 }
   );
 

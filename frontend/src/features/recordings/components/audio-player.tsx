@@ -123,10 +123,7 @@ export function AudioPlayer({
       // Only toggle if user is not typing in an input
       if (
         e.code === "Space" &&
-        !(
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        )
+        !(e.target instanceof Element && e.target.closest('input, textarea, button, a, select, [role="tab"], [contenteditable="true"]'))
       ) {
         e.preventDefault();
         onTogglePlay();
@@ -197,9 +194,10 @@ export function AudioPlayer({
               className="flex-1 flex flex-col justify-end h-full items-center"
             >
               <div
-                style={{ height: `${height}%` }}
+                style={{ height: `${height}%`, animationDelay: `${idx * -71}ms` }}
                 className={cn(
                   "w-full rounded-xs transition-colors duration-150",
+                  isPlaying && "audio-wave-playing",
                   isPlayed
                     ? "bg-accent shadow-xs shadow-accent/20"
                     : "bg-surface-3 group-hover:bg-border",

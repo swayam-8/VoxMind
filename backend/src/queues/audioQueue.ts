@@ -72,6 +72,9 @@ export function startAudioWorker(): Worker<TranscribeJobData> {
 
         // Update recording
         recording.status = 'completed';
+        recording.analysisStatus = 'pending';
+        recording.analysisErrorMessage = null;
+        recording.indexStatus = 'pending';
         recording.language = result.language || recording.language;
         if (result.duration && result.duration > 0) {
           recording.durationSeconds = result.duration;
@@ -94,7 +97,15 @@ export function startAudioWorker(): Worker<TranscribeJobData> {
         );
 
         // Enqueue AI analysis & indexing job
-        await aiQueue.add('analyze-recording', { recordingId: recording._id });
+        try {
+          await aiQueue.add('analyze-recording', { recordingId: recording._id }, {
+            jobId: `analysis-${recording._id}`, removeOnComplete: true, removeOnFail: true,
+          });
+        } catch {
+          recording.analysisStatus = 'failed';
+          recording.analysisErrorMessage = 'Could not queue AI analysis. Check the background worker connection and regenerate the analysis.';
+          await recording.save();
+        }
       } catch (err: any) {
         logger.error({ recordingId, err: err.message }, 'Audio transcription failed');
         recording.status = 'failed';
