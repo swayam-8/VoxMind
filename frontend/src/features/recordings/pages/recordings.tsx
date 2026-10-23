@@ -399,6 +399,15 @@ export function RecordingsPage() {
                     {rec.title}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-text-muted">
+                    {rec.source_provider && (
+                      <Badge variant="outline">
+                        {rec.source_provider === "google-meet"
+                          ? "Google Meet"
+                          : rec.source_provider === "zoom"
+                            ? "Zoom"
+                            : "Webex"}
+                      </Badge>
+                    )}
                     {rec.collection_name && (
                       <>
                         <span className="flex items-center gap-1 text-text-secondary">

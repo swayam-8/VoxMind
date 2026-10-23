@@ -6,7 +6,7 @@ import os
 import re
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 from app import config
 
 logger = logging.getLogger(__name__)

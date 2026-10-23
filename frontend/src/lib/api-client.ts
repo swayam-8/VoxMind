@@ -72,6 +72,7 @@ export interface ApiRecording {
   collection_name?: string | null
   title: string
   filename: string
+  source_provider?: "zoom" | "google-meet" | "webex" | null
   file_size_bytes: number
   duration_seconds: number
   mime_type: string

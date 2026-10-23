@@ -366,6 +366,16 @@ export function RecordingDetailPage() {
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-text-primary truncate max-w-full">
                 {recording.title}
               </h1>
+              {recording.source_provider && (
+                <Badge variant="outline">
+                  Imported from{" "}
+                  {recording.source_provider === "google-meet"
+                    ? "Google Meet"
+                    : recording.source_provider === "zoom"
+                      ? "Zoom"
+                      : "Webex"}
+                </Badge>
+              )}
               {(recording.status === "ready" ||
                 recording.status === "completed") && (
                 <Badge variant="success" className="text-xs">

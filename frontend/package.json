@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:smoke": "node scripts/smoke-test.cjs"
+    "test:smoke": "node scripts/smoke-test.cjs",
+    "test:meetings": "node scripts/meeting-integrations-smoke.cjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",

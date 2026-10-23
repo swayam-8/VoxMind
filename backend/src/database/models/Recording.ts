@@ -11,6 +11,8 @@ export interface IRecording {
   collectionId: string | null;
   title: string;
   filename: string;
+  sourceProvider: string | null;
+  sourceExternalId: string | null;
   storagePath: string;
   fileSizeBytes: number;
   durationSeconds: number;
@@ -32,6 +34,8 @@ const RecordingSchema = new Schema<IRecording>(
     collectionId: { type: String, default: null, index: true },
     title: { type: String, required: true, trim: true },
     filename: { type: String, required: true },
+    sourceProvider: { type: String, default: null },
+    sourceExternalId: { type: String, default: null },
     storagePath: { type: String, required: true },
     fileSizeBytes: { type: Number, default: 0 },
     durationSeconds: { type: Number, default: 0 },

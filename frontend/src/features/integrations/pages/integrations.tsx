@@ -1,3 +1,4 @@
+import { MeetingIntegrations } from "../components/meeting-integrations";
 import { useState, useEffect } from "react";
 import {
   KeyRound,
@@ -183,6 +184,8 @@ console.log("Job status:", result.data.status);`;
           Generate API Key
         </Button>
       </div>
+
+      <MeetingIntegrations />
 
       {/* API Usage & Quotas (Live Metrics) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

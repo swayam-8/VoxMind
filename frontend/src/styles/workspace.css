@@ -851,7 +851,7 @@
 .feature-page h3 {
   letter-spacing: -0.25px;
 }
-.feature-page section > div:first-child h2 {
+.feature-page section:not(.meeting-integrations) > div:first-child h2 {
   font-size: 17px;
   font-weight: 600;
 }

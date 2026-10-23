@@ -255,6 +255,10 @@ Open the registration screen to create a local account, then sign in. The fronte
 
 ---
 
+## Import from Zoom, Google Meet, and Webex
+
+Open **Integrations** to connect a meeting account and import completed cloud recordings directly into the library. Google Meet recordings are retrieved from Google Drive. Imports run in the background, avoid duplicate copies, and continue through the local transcription and intelligence pipeline. Provider OAuth apps must be configured on the backend first. See [meeting integration setup](docs/meeting-integrations.md) for credentials, scopes, callbacks, limits, and validation.
+
 ## Automated Test Suites & CI/CD
 
 VoxMind maintains passing test suites across all layers of the stack:

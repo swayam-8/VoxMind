@@ -5,6 +5,7 @@ import { startAudioWorker } from './queues/audioQueue.js';
 import { startAiWorker } from './queues/aiQueue.js';
 import { logger } from './middleware/requestLogger.js';
 import { Worker } from 'bullmq';
+import { startMeetingImportWorker } from './queues/meetingImportQueue.js';
 
 async function bootstrap() {
   try {
@@ -16,9 +17,11 @@ async function bootstrap() {
     // 2. Start BullMQ background workers (if not in test mode)
     let audioWorker: Worker | undefined;
     let aiWorker: Worker | undefined;
+    let meetingImportWorker: Worker | undefined;
     try {
       audioWorker = startAudioWorker();
       aiWorker = startAiWorker();
+      meetingImportWorker = startMeetingImportWorker();
       logger.info('BullMQ audio and AI workers started successfully');
     } catch (err: any) {
       logger.warn({ err: err.message }, 'Failed to initialize BullMQ workers (Redis might be offline)');
@@ -36,6 +39,7 @@ async function bootstrap() {
       server.close(async () => {
         if (audioWorker) await audioWorker.close();
         if (aiWorker) await aiWorker.close();
+        if (meetingImportWorker) await meetingImportWorker.close();
         await disconnectDatabase();
         logger.info('Graceful shutdown completed');
         process.exit(0);

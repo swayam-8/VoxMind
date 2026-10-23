@@ -58,7 +58,7 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
     });
   }
 
-  logger.error({ err, url: req.url, method: req.method }, 'Unhandled Exception');
+  logger.error({ err, url: req.path, method: req.method }, 'Unhandled Exception');
 
   const statusCode = err.status || err.statusCode || 500;
   const message = err.message || 'Internal Server Error';

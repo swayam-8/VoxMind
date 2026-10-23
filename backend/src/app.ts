@@ -1,4 +1,5 @@
 import express from 'express';
+import { meetingIntegrationRoutes } from './modules/meeting-integrations/routes.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import { httpLogger } from './middleware/requestLogger.js';
@@ -36,6 +37,7 @@ export function createApp() {
 
   // Version 1 API routes
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/meeting-integrations', meetingIntegrationRoutes);
   app.use('/api/v1/recordings', recordingRoutes);
   app.use('/api/v1/collections', collectionRoutes);
   app.use('/api/v1/search', searchRoutes);

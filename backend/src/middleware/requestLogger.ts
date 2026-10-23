@@ -19,6 +19,11 @@ export const logger = pino({
 
 export const httpLogger = pinoHttp({
   logger,
+  // OAuth codes, state nonces, session tokens and redirect headers must never enter logs.
+  serializers: {
+    req(req) { return { id: req.id, method: req.method, url: req.url?.split('?')[0], remoteAddress: req.remoteAddress }; },
+    res(res) { return { statusCode: res.statusCode }; },
+  },
   autoLogging: {
     ignore: (req) => req.url === '/api/v1/health',
   },

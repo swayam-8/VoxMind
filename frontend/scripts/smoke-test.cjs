@@ -230,6 +230,7 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
     }
     await page.keyboard.press("Escape");
     await drawer.waitFor({ state: "hidden" });
+    await page.waitForFunction(el => el === document.activeElement, await page.getByRole("button", { name: "Open navigation", exact: true }).elementHandle());
     check(
       await page
         .getByRole("button", { name: "Open navigation", exact: true })
