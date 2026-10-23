@@ -1,6 +1,10 @@
 # VoxMind frontend
 
-React, TypeScript, Vite, and Tailwind. The interface uses an white, graphite, and blue palette with an audio waveform signature. Both light and dark themes are supported.
+React, TypeScript, Vite, and Tailwind. The interface uses a white, slate, and cobalt palette with an audio waveform signature. Both light and dark themes are supported.
+
+![Updated desktop workspace](docs/workspace-desktop.png)
+
+[View the mobile layout](docs/workspace-mobile.png)
 
 ## Develop
 
@@ -11,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Vite listens on port 5173 and proxies `/api` to the Express backend on port 5000. Start MongoDB and Redis with `docker compose up -d mongo redis` from the repository root, then run `npm run dev` in `backend`. Register an account through the UI; the client does not automatically use demo credentials. The existing Python AI service is needed for transcription, embeddings, and generated answers.
+Vite requires port 5173 to be free and stops with an error if another server is already using it. This prevents accidentally opening an older frontend. It listens on port 5173 and proxies `/api` to the Express backend on port 5000. Start MongoDB and Redis with `docker compose up -d mongo redis` from the repository root, then run `npm run dev` in `backend`. Register an account through the UI; the client does not automatically use demo credentials. The existing Python AI service is needed for transcription, embeddings, and generated answers.
 
 ```sh
 npm run lint
@@ -39,3 +43,17 @@ VOXMIND_BASE_URL=http://127.0.0.1:5173 npm run test:smoke
 ```
 
 Playwright is a development dependency. Install its browser with `npx playwright install chromium`, or set `CHROMIUM_PATH` to an existing Chromium executable. It verifies all primary screens at phone, tablet, laptop, and wide desktop sizes; drawer keyboard behavior; light/dark themes; form validation; and a real registration/session flow. It creates an isolated local review account and collection, then removes the collection. It does not upload audio or require inference models.
+
+## Update an existing checkout
+
+Stop the previous frontend process with Ctrl+C in its terminal. From the repository root:
+
+```sh
+git fetch origin
+git switch main
+git pull --ff-only origin main
+npm ci --prefix frontend
+npm run dev --prefix frontend -- --force
+```
+
+Open the address printed by Vite. The current light theme has a white sidebar, cobalt active navigation, 26px navigation icons, and a 56px workspace search field. These are useful visual checks that the updated frontend is running.

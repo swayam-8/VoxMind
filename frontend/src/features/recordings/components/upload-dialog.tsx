@@ -59,30 +59,26 @@ export function UploadDialog({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selected = e.target.files[0];
-      const validExtensions = ["mp3", "wav", "m4a", "webm", "ogg", "flac"];
-      const ext = selected.name.split(".").pop()?.toLowerCase() || "";
-
-      if (!validExtensions.includes(ext)) {
-        setError(
-          `Unsupported format .${ext}. Please provide MP3, WAV, M4A, WEBM, or FLAC.`,
-        );
-        return;
-      }
-
-      if (selected.size > 100 * 1024 * 1024) {
-        setError("File size exceeds maximum 100MB limit.");
-        return;
-      }
-
-      setError(null);
-      setFile(selected);
-      if (!title) {
-        setTitle(selected.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
-      }
+  const [isDragging, setIsDragging] = useState(false);
+  const selectFile = (selected?: File) => {
+    if (!selected || isUploading) return;
+    const ext = selected.name.split(".").pop()?.toLowerCase() || "";
+    if (!["mp3", "wav", "m4a", "webm", "ogg", "flac"].includes(ext)) {
+      setFile(null);
+      setError(
+        `Unsupported format .${ext}. Choose MP3, WAV, M4A, WEBM, OGG, or FLAC.`,
+      );
+      return;
     }
+    if (selected.size > 100 * 1024 * 1024) {
+      setFile(null);
+      setError("File size exceeds the 100MB limit.");
+      return;
+    }
+    setError(null);
+    setFile(selected);
+    if (!title)
+      setTitle(selected.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
   };
 
   const handleUpload = async () => {
@@ -150,7 +146,7 @@ export function UploadDialog({
           <DialogTitle className="text-base sm:text-lg">
             Upload Audio Recording
           </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+          <DialogDescription className="text-sm sm:text-sm">
             Audio is securely uploaded to your local storage volume and queued
             for native-language transcription.
           </DialogDescription>
@@ -159,14 +155,40 @@ export function UploadDialog({
         <div className="space-y-4 pt-1">
           {/* Dropzone */}
           <div
-            onClick={() => fileInputRef.current?.click()}
-            className="group relative flex flex-col items-center justify-center p-4 sm:p-6 border-2 border-dashed border-border rounded-xl bg-surface-2/40 hover:bg-surface-2 hover:border-accent/50 transition-all cursor-pointer text-center"
+            role="button"
+            aria-label="Choose audio file"
+            aria-disabled={isUploading}
+            tabIndex={isUploading ? -1 : 0}
+            data-dragging={isDragging}
+            onClick={() => {
+              if (!isUploading) fileInputRef.current?.click();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                if (!isUploading) fileInputRef.current?.click();
+              }
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              if (!isUploading) setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              selectFile(event.dataTransfer.files[0]);
+            }}
+            className="upload-dropzone group relative flex flex-col items-center justify-center p-4 sm:p-6 border-2 border-dashed border-border rounded-xl bg-surface-2/40 hover:bg-surface-2 hover:border-accent/50 transition-all cursor-pointer text-center"
           >
             <input
               ref={fileInputRef}
               type="file"
               accept=".mp3,.wav,.m4a,.webm,.ogg,.flac"
-              onChange={handleFileChange}
+              onChange={(event) => selectFile(event.target.files?.[0])}
+              onClick={(event) => event.stopPropagation()}
+              aria-label="Audio file"
+              disabled={isUploading}
               className="hidden"
             />
             {file ? (
@@ -177,7 +199,7 @@ export function UploadDialog({
                 <div className="text-sm font-medium text-text-primary truncate max-w-full px-2">
                   {file.name}
                 </div>
-                <div className="text-xs text-text-muted">
+                <div className="text-sm text-text-muted">
                   {(file.size / (1024 * 1024)).toFixed(2)} MB • Click to replace
                 </div>
               </div>
@@ -189,8 +211,8 @@ export function UploadDialog({
                 <div className="text-sm font-medium text-text-primary px-2">
                   Click to choose audio file, or drag & drop here
                 </div>
-                <div className="text-xs text-text-muted">
-                  MP3, WAV, M4A, WEBM, FLAC (Max 100MB)
+                <div className="text-sm text-text-muted">
+                  MP3, WAV, M4A, WEBM, OGG, FLAC · Up to 100MB
                 </div>
               </div>
             )}
@@ -198,7 +220,7 @@ export function UploadDialog({
 
           {isUploading && (
             <div className="space-y-1.5 p-3 rounded-lg bg-surface-2 border border-border">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-sm">
                 <span className="font-medium text-text-primary">
                   {uploadProgress < 100
                     ? "Uploading audio file..."
@@ -218,18 +240,25 @@ export function UploadDialog({
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-xs text-danger p-2.5 rounded-md bg-danger-subtle border border-danger/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div
+              role="alert"
+              className="flex items-center gap-2 text-sm text-danger p-2.5 rounded-md bg-danger-subtle border border-danger/20"
+            >
+              <AlertCircle className="h-5 w-5 shrink-0" />
               <span className="break-words">{error}</span>
             </div>
           )}
 
           {/* Title Input */}
           <div>
-            <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+            <label
+              htmlFor="upload-dialog-field-1"
+              className="text-sm font-medium text-text-secondary mb-1.5 block"
+            >
               Recording Title
             </label>
             <Input
+              id="upload-dialog-field-1"
               placeholder="e.g. Platform Architecture Review"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -239,18 +268,22 @@ export function UploadDialog({
 
           {/* Spoken Language Selector */}
           <div>
-            <label className="text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5 text-accent" />
+            <label
+              htmlFor="upload-dialog-field-2"
+              className="text-sm font-medium text-text-secondary mb-1.5 flex items-center gap-1.5"
+            >
+              <Globe className="w-5 h-5 text-accent" />
               <span>Spoken Language</span>
-              <span className="text-[11px] text-text-muted font-normal">
+              <span className="text-xs text-text-muted font-normal">
                 (Whisper preserves original script)
               </span>
             </label>
             <select
+              id="upload-dialog-field-2"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               disabled={isUploading}
-              className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               {SUPPORTED_LANGUAGES.map((l) => (
                 <option
@@ -281,7 +314,7 @@ export function UploadDialog({
             disabled={!file || isUploading}
             className="w-full sm:w-auto"
           >
-            <CheckCircle2 className="w-4 h-4 mr-1.5" />
+            <CheckCircle2 className="w-5 h-5 mr-1.5" />
             Upload & Queue
           </Button>
         </DialogFooter>

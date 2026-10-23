@@ -162,7 +162,7 @@ VoxMind/
 
 ### 5. "Listening Room" Design System
 - A warm, editorial workspace with a custom audio waveform signature, shared typography, and accessible navigation.
-- White (`#FFFFFF`), graphite (`#191B23`), and blue (`#3159DF`) define the light theme; a coordinated dark theme and live system preference are also available.
+- White (`#FFFFFF`), slate (`#15233F`), and cobalt (`#3159DF`) define the light theme; a coordinated dark theme and live system preference are also available.
 - **Responsive layouts**: Browser smoke checks cover widths of 320, 390, 768, 1024, 1440, and 1920 pixels, including phone navigation, bounded dialogs, authentication forms, and the recording detail screen.
 
 ### 6. Enterprise Security & Developer Platform

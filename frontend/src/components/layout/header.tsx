@@ -33,9 +33,9 @@ export function Header({
           onClick={() => setSearchOpen(true)}
           aria-label="Search workspace"
         >
-          <Search size={24} />
+          <Search size={26} />
           <span className="search-label">Search your workspace</span>
-          <kbd className="search-shortcut">⌘ K</kbd>
+          <kbd className="search-shortcut">Ctrl / ⌘ K</kbd>
         </button>
         <div className="header-actions">
           <span className="header-divider" />

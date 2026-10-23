@@ -160,11 +160,11 @@ console.log("Job status:", result.data.status);`;
             <h1 className="text-xl font-bold tracking-tight text-text-primary">
               Make it part of your flow
             </h1>
-            <Badge variant="violet" className="text-[10px] font-mono">
+            <Badge variant="violet" className="text-xs font-mono">
               REST v1
             </Badge>
           </div>
-          <p className="mt-1 text-xs text-text-secondary">
+          <p className="mt-1 text-sm text-text-secondary">
             Connect your tools and bring voice intelligence into your everyday
             work.
           </p>
@@ -179,7 +179,7 @@ console.log("Job status:", result.data.status);`;
           }}
           className="shadow-sm"
         >
-          <Plus className="w-4 h-4 mr-1.5" />
+          <Plus className="w-5 h-5 mr-1.5" />
           Generate API Key
         </Button>
       </div>
@@ -187,15 +187,15 @@ console.log("Job status:", result.data.status);`;
       {/* API Usage & Quotas (Live Metrics) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-text-muted">
+          <div className="flex items-center justify-between text-sm text-text-muted">
             <span>Requests Recorded</span>
-            <Activity className="w-4 h-4 text-accent" />
+            <Activity className="w-5 h-5 text-accent" />
           </div>
           <div className="text-xl font-bold text-text-primary font-mono">
             {usage?.total_requests.toLocaleString() ?? 0} /{" "}
             {(usage?.quota.requests_limit ?? 100000).toLocaleString()}
           </div>
-          <div className="text-[11px] text-text-secondary">
+          <div className="text-xs text-text-secondary">
             {usage
               ? `${((usage.total_requests / usage.quota.requests_limit) * 100).toFixed(1)}% quota consumed`
               : "Standard Workspace Quota"}
@@ -203,28 +203,28 @@ console.log("Job status:", result.data.status);`;
         </div>
 
         <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-text-muted">
+          <div className="flex items-center justify-between text-sm text-text-muted">
             <span>Audio Processed</span>
-            <Mic className="w-4 h-4 text-emerald-500" />
+            <Mic className="w-5 h-5 text-success" />
           </div>
           <div className="text-xl font-bold text-text-primary font-mono">
             {usage?.total_audio_hours ?? 0} hrs /{" "}
             {usage?.quota.audio_hours_limit ?? 50} hrs
           </div>
-          <div className="text-[11px] text-text-secondary">
+          <div className="text-xs text-text-secondary">
             Local faster-whisper transcription
           </div>
         </div>
 
         <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-text-muted">
+          <div className="flex items-center justify-between text-sm text-text-muted">
             <span>AI LLM Tokens</span>
-            <Zap className="w-4 h-4 text-amber-500" />
+            <Zap className="w-5 h-5 text-amber-500" />
           </div>
           <div className="text-xl font-bold text-text-primary font-mono">
             {(usage?.total_tokens ?? 0).toLocaleString()} tokens
           </div>
-          <div className="text-[11px] text-text-secondary">
+          <div className="text-xs text-text-secondary">
             Ollama summarization & RAG
           </div>
         </div>
@@ -235,26 +235,26 @@ console.log("Job status:", result.data.status);`;
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div>
             <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-accent" />
+              <KeyRound className="h-5 w-5 text-accent" />
               Developer API Keys
             </h3>
-            <p className="text-xs text-text-muted mt-0.5">
+            <p className="text-sm text-text-muted mt-0.5">
               Secret keys grant full programmatic access to your authorized
               workspace voice endpoints.
             </p>
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-sm">
             {activeKeys.length} active key(s)
           </Badge>
         </div>
 
         {loading ? (
-          <div className="py-8 flex items-center justify-center text-text-muted text-xs">
-            <Loader2 className="w-4 h-4 mr-2 animate-spin text-accent" />
+          <div className="py-8 flex items-center justify-center text-text-muted text-sm">
+            <Loader2 className="w-5 h-5 mr-2 animate-spin text-accent" />
             Loading developer keys...
           </div>
         ) : keys.length === 0 ? (
-          <div className="text-center py-8 text-xs text-text-muted">
+          <div className="text-center py-8 text-sm text-text-muted">
             No API keys generated yet. Click "Generate API Key" to create a
             programmatic access token.
           </div>
@@ -272,12 +272,12 @@ console.log("Job status:", result.data.status);`;
                     </span>
                     <Badge
                       variant={key.is_revoked ? "outline" : "success"}
-                      className="text-[10px]"
+                      className="text-xs"
                     >
                       {key.is_revoked ? "revoked" : "active"}
                     </Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted font-mono">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted font-mono">
                     <span className="bg-surface-1 px-2 py-0.5 rounded border border-border">
                       {key.key_prefix}
                     </span>
@@ -299,12 +299,12 @@ console.log("Job status:", result.data.status);`;
                       variant="outline"
                       size="sm"
                       onClick={() => handleRevoke(key.id, key.name)}
-                      className="h-8 text-xs text-danger hover:bg-danger-subtle hover:border-danger/30"
+                      className="h-8 text-sm text-danger hover:bg-danger-subtle hover:border-danger/30"
                     >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Revoke
+                      <Trash2 className="w-5 h-5 mr-1" /> Revoke
                     </Button>
                   ) : (
-                    <span className="text-xs text-text-muted italic">
+                    <span className="text-sm text-text-muted italic">
                       Revoked
                     </span>
                   )}
@@ -319,12 +319,12 @@ console.log("Job status:", result.data.status);`;
       <div className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
-            <Code2 className="h-4 w-4 text-accent" />
+            <Code2 className="h-5 w-5 text-accent" />
             <h3 className="text-sm font-semibold text-text-primary">
               Integration Code Samples
             </h3>
           </div>
-          <span className="text-xs text-text-muted font-mono">
+          <span className="text-sm text-text-muted font-mono">
             POST /api/v1/recordings
           </span>
         </div>
@@ -338,48 +338,48 @@ console.log("Job status:", result.data.status);`;
 
           <TabsContent value="curl" className="pt-3">
             <div className="relative">
-              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-xs font-mono text-text-primary overflow-x-auto leading-relaxed">
+              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-sm font-mono text-text-primary overflow-x-auto leading-relaxed">
                 {CURL_EXAMPLE}
               </pre>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => copyCode(CURL_EXAMPLE)}
-                className="absolute right-3 top-3 h-7 text-xs"
+                className="absolute right-3 top-3 h-7 text-sm"
               >
-                <Copy className="w-3 h-3 mr-1" /> Copy
+                <Copy className="w-5 h-5 mr-1" /> Copy
               </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="python" className="pt-3">
             <div className="relative">
-              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-xs font-mono text-text-primary overflow-x-auto leading-relaxed">
+              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-sm font-mono text-text-primary overflow-x-auto leading-relaxed">
                 {PYTHON_EXAMPLE}
               </pre>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => copyCode(PYTHON_EXAMPLE)}
-                className="absolute right-3 top-3 h-7 text-xs"
+                className="absolute right-3 top-3 h-7 text-sm"
               >
-                <Copy className="w-3 h-3 mr-1" /> Copy
+                <Copy className="w-5 h-5 mr-1" /> Copy
               </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="ts" className="pt-3">
             <div className="relative">
-              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-xs font-mono text-text-primary overflow-x-auto leading-relaxed">
+              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-sm font-mono text-text-primary overflow-x-auto leading-relaxed">
                 {TS_EXAMPLE}
               </pre>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => copyCode(TS_EXAMPLE)}
-                className="absolute right-3 top-3 h-7 text-xs"
+                className="absolute right-3 top-3 h-7 text-sm"
               >
-                <Copy className="w-3 h-3 mr-1" /> Copy
+                <Copy className="w-5 h-5 mr-1" /> Copy
               </Button>
             </div>
           </TabsContent>
@@ -404,8 +404,8 @@ console.log("Job status:", result.data.status);`;
 
           {generatedKey ? (
             <div className="space-y-4 pt-1">
-              <div className="p-3 rounded-lg bg-warning-subtle border border-warning/30 text-xs text-warning flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-lg bg-warning-subtle border border-warning/30 text-sm text-warning flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                 <span>
                   For security, we cannot show this token again after you
                   dismiss this dialog.
@@ -416,14 +416,14 @@ console.log("Job status:", result.data.status);`;
                 <Input
                   readOnly
                   value={generatedKey}
-                  className="font-mono text-xs bg-surface-2 border-border"
+                  className="font-mono text-sm bg-surface-2 border-border"
                 />
                 <Button
                   variant="default"
                   onClick={() => copyCode(generatedKey)}
                   className="shrink-0"
                 >
-                  <Copy className="w-4 h-4 mr-1" /> Copy
+                  <Copy className="w-5 h-5 mr-1" /> Copy
                 </Button>
               </div>
 
@@ -439,10 +439,14 @@ console.log("Job status:", result.data.status);`;
           ) : (
             <form onSubmit={handleGenerateKey} className="space-y-4 pt-1">
               <div>
-                <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+                <label
+                  htmlFor="integrations-field-1"
+                  className="text-sm font-medium text-text-secondary mb-1.5 block"
+                >
                   Key Name / Purpose
                 </label>
                 <Input
+                  id="integrations-field-1"
                   placeholder="e.g. Production Ingestion Service"
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
@@ -466,7 +470,7 @@ console.log("Job status:", result.data.status);`;
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-1.5 animate-spin" />
                       Generating...
                     </>
                   ) : (

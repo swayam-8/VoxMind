@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react";
 import {
   Play,
   Pause,
@@ -6,42 +6,42 @@ import {
   RotateCw,
   Volume2,
   VolumeX,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
-  durationSeconds: number
-  currentTime: number
-  onSeek: (time: number) => void
-  isPlaying: boolean
-  onTogglePlay: () => void
-  playbackRate?: number
-  onChangePlaybackRate?: (rate: number) => void
-  title?: string
-  className?: string
-  audioSrc?: string
-  onTimeUpdate?: (currentTime: number) => void
+  durationSeconds: number;
+  currentTime: number;
+  onSeek: (time: number) => void;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  playbackRate?: number;
+  onChangePlaybackRate?: (rate: number) => void;
+  title?: string;
+  className?: string;
+  audioSrc?: string;
+  onTimeUpdate?: (currentTime: number) => void;
 }
 
 function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return "00:00"
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  if (isNaN(seconds) || seconds < 0) return "00:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 // Precomputed deterministic heights for waveform visualization
 const WAVEFORM_HEIGHTS: number[] = Array.from({ length: 48 }, (_, i) => {
-  const v = Math.sin(i * 0.4) * 35 + Math.cos(i * 0.8) * 25 + 40
-  return Math.max(15, Math.min(90, Math.round(v)))
-})
+  const v = Math.sin(i * 0.4) * 35 + Math.cos(i * 0.8) * 25 + 40;
+  return Math.max(15, Math.min(90, Math.round(v)));
+});
 
 export function AudioPlayer({
   durationSeconds,
@@ -56,62 +56,66 @@ export function AudioPlayer({
   audioSrc,
   onTimeUpdate,
 }: AudioPlayerProps) {
-  const [isMuted, setIsMuted] = useState(false)
-  const [internalRate, setInternalRate] = useState(playbackRate)
-  const progressBarRef = useRef<HTMLDivElement>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isMuted, setIsMuted] = useState(false);
+  const [internalRate, setInternalRate] = useState(playbackRate);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Sync HTML5 audio element with React playback state
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
+    const audio = audioRef.current;
+    if (!audio) return;
 
     if (isPlaying) {
       audio.play().catch(() => {
         // Autoplay policy or media load in progress
-      })
+      });
     } else {
-      audio.pause()
+      audio.pause();
     }
-  }, [isPlaying])
+  }, [isPlaying]);
 
   // Sync seek events to audio element
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
+    const audio = audioRef.current;
+    if (!audio) return;
 
     if (Math.abs(audio.currentTime - currentTime) > 0.5) {
-      audio.currentTime = currentTime
+      audio.currentTime = currentTime;
     }
-  }, [currentTime])
+  }, [currentTime]);
 
   // Sync rate and mute
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.playbackRate = internalRate
-    audio.muted = isMuted
-  }, [internalRate, isMuted])
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.playbackRate = internalRate;
+    audio.muted = isMuted;
+  }, [internalRate, isMuted]);
 
-  const progressPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
+  const progressPercent =
+    durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0;
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || durationSeconds <= 0) return
-    const rect = progressBarRef.current.getBoundingClientRect()
-    const clickX = e.clientX - rect.left
-    const newPercent = Math.max(0, Math.min(1, clickX / rect.width))
-    onSeek(newPercent * durationSeconds)
-  }
+    if (!progressBarRef.current || durationSeconds <= 0) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const newPercent = Math.max(0, Math.min(1, clickX / rect.width));
+    onSeek(newPercent * durationSeconds);
+  };
 
   const handleSkip = (seconds: number) => {
-    const nextTime = Math.max(0, Math.min(durationSeconds, currentTime + seconds))
-    onSeek(nextTime)
-  }
+    const nextTime = Math.max(
+      0,
+      Math.min(durationSeconds, currentTime + seconds),
+    );
+    onSeek(nextTime);
+  };
 
   const handleRateChange = (rate: number) => {
-    setInternalRate(rate)
-    onChangePlaybackRate?.(rate)
-  }
+    setInternalRate(rate);
+    onChangePlaybackRate?.(rate);
+  };
 
   // Keyboard shortcut listener for spacebar play/pause
   useEffect(() => {
@@ -119,21 +123,24 @@ export function AudioPlayer({
       // Only toggle if user is not typing in an input
       if (
         e.code === "Space" &&
-        !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
+        !(
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        )
       ) {
-        e.preventDefault()
-        onTogglePlay()
+        e.preventDefault();
+        onTogglePlay();
       }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [onTogglePlay])
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onTogglePlay]);
 
   return (
     <div
       className={cn(
         "rounded-xl border border-border bg-surface-1 p-3.5 sm:p-5 shadow-sm space-y-3 sm:space-y-4 min-w-0 max-w-full",
-        className
+        className,
       )}
     >
       {/* Hidden native HTML5 audio element for actual sound playback */}
@@ -144,12 +151,12 @@ export function AudioPlayer({
           preload="metadata"
           onTimeUpdate={() => {
             if (audioRef.current) {
-              onTimeUpdate?.(audioRef.current.currentTime)
+              onTimeUpdate?.(audioRef.current.currentTime);
             }
           }}
           onEnded={() => {
-            onTogglePlay()
-            onSeek(0)
+            onTogglePlay();
+            onSeek(0);
           }}
         />
       )}
@@ -158,14 +165,14 @@ export function AudioPlayer({
       {title && (
         <div className="flex items-center justify-between border-b border-border/50 pb-2.5 gap-2 min-w-0">
           <div className="min-w-0 flex-1">
-            <h4 className="text-[10px] sm:text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <h4 className="text-xs sm:text-sm font-semibold text-text-muted uppercase tracking-wider">
               Audio Playback Channel
             </h4>
-            <p className="text-xs sm:text-sm font-medium text-text-primary truncate mt-0.5">
+            <p className="text-sm sm:text-sm font-medium text-text-primary truncate mt-0.5">
               {title}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-mono text-text-secondary shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-mono text-text-secondary shrink-0">
             <span>{formatTime(currentTime)}</span>
             <span>/</span>
             <span>{formatTime(durationSeconds)}</span>
@@ -181,8 +188,8 @@ export function AudioPlayer({
         title="Click or drag to seek in recording"
       >
         {WAVEFORM_HEIGHTS.map((height, idx) => {
-          const barPercent = (idx / WAVEFORM_HEIGHTS.length) * 100
-          const isPlayed = barPercent <= progressPercent
+          const barPercent = (idx / WAVEFORM_HEIGHTS.length) * 100;
+          const isPlayed = barPercent <= progressPercent;
 
           return (
             <div
@@ -195,11 +202,11 @@ export function AudioPlayer({
                   "w-full rounded-xs transition-colors duration-150",
                   isPlayed
                     ? "bg-accent shadow-xs shadow-accent/20"
-                    : "bg-surface-3 group-hover:bg-border"
+                    : "bg-surface-3 group-hover:bg-border",
                 )}
               />
             </div>
-          )
+          );
         })}
 
         {/* Playhead Indicator Line */}
@@ -222,7 +229,7 @@ export function AudioPlayer({
             className="h-8 w-8 text-text-secondary hover:text-text-primary"
             aria-label="Skip backward 10 seconds"
           >
-            <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <RotateCcw className="h-5 w-5 sm:h-5 sm:w-5" />
           </Button>
 
           <Button
@@ -233,9 +240,9 @@ export function AudioPlayer({
             aria-label={isPlaying ? "Pause playback" : "Play audio recording"}
           >
             {isPlaying ? (
-              <Pause className="h-4 w-4 sm:h-5 sm:w-5 fill-current" />
+              <Pause className="h-5 w-5 sm:h-5 sm:w-5 fill-current" />
             ) : (
-              <Play className="h-4 w-4 sm:h-5 sm:w-5 fill-current ml-0.5" />
+              <Play className="h-5 w-5 sm:h-5 sm:w-5 fill-current ml-0.5" />
             )}
           </Button>
 
@@ -246,10 +253,10 @@ export function AudioPlayer({
             className="h-8 w-8 text-text-secondary hover:text-text-primary"
             aria-label="Skip forward 10 seconds"
           >
-            <RotateCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <RotateCw className="h-5 w-5 sm:h-5 sm:w-5" />
           </Button>
 
-          <span className="text-[11px] font-mono text-text-muted hidden md:inline ml-2">
+          <span className="text-xs font-mono text-text-muted hidden md:inline ml-2">
             Space to {isPlaying ? "pause" : "play"}
           </span>
         </div>
@@ -261,7 +268,7 @@ export function AudioPlayer({
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-8 px-2 sm:px-2.5 font-mono text-xs text-text-primary"
+                className="h-8 px-2 sm:px-2.5 font-mono text-sm text-text-primary"
               >
                 {internalRate}x
               </Button>
@@ -272,8 +279,8 @@ export function AudioPlayer({
                   key={rate}
                   onClick={() => handleRateChange(rate)}
                   className={cn(
-                    "font-mono text-xs cursor-pointer",
-                    internalRate === rate && "text-accent font-semibold"
+                    "font-mono text-sm cursor-pointer",
+                    internalRate === rate && "text-accent font-semibold",
                   )}
                 >
                   {rate.toFixed(2)}x Speed
@@ -290,13 +297,13 @@ export function AudioPlayer({
             aria-label={isMuted ? "Unmute audio" : "Mute audio"}
           >
             {isMuted ? (
-              <VolumeX className="h-4 w-4 text-danger" />
+              <VolumeX className="h-5 w-5 text-danger" />
             ) : (
-              <Volume2 className="h-4 w-4" />
+              <Volume2 className="h-5 w-5" />
             )}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

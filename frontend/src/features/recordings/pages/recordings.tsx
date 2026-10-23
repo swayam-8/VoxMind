@@ -171,11 +171,11 @@ export function RecordingsPage() {
             <h1 className="text-xl font-bold tracking-tight text-text-primary">
               Your recording library
             </h1>
-            <Badge variant="outline" className="text-[10px] font-mono">
+            <Badge variant="outline" className="text-xs font-mono">
               {totalCount} Total
             </Badge>
           </div>
-          <p className="mt-1 text-xs text-text-secondary">
+          <p className="mt-1 text-sm text-text-secondary">
             Meetings, interviews, and the ideas in between. All in one place.
           </p>
         </div>
@@ -187,32 +187,36 @@ export function RecordingsPage() {
             onClick={() => setUploadOpen(true)}
             className="shadow-xs"
           >
-            <UploadCloud className="w-4 h-4 mr-1.5" />
+            <UploadCloud className="w-5 h-5 mr-1.5" />
             Upload Audio
           </Button>
         </div>
       </div>
 
       {/* Filter and Control Bar */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 bg-surface-1 p-2.5 sm:p-3 rounded-xl border border-border min-w-0">
+      <div className="recordings-toolbar">
         {/* Search Input */}
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-2.5 top-2 h-4 w-4 text-text-muted" />
+          <Search className="absolute left-2.5 top-2 h-5 w-5 text-text-muted" />
           <Input
             placeholder="Search by title or filename..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 bg-surface-2 border-border text-xs w-full"
+            aria-label="Search recordings"
+            className="pl-11 bg-surface-1 border-border text-sm w-full"
           />
         </div>
 
         {/* Filter Dropdowns & View Mode */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="recording-filters">
           {/* Status Filter */}
           <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-36">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 text-xs w-full bg-surface-2">
-                <Filter className="w-3 h-3 mr-1 text-text-muted shrink-0" />
+              <SelectTrigger
+                aria-label="Filter by status"
+                className="text-sm w-full"
+              >
+                <Filter className="w-5 h-5 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -239,8 +243,11 @@ export function RecordingsPage() {
                 setSearchParams(next);
               }}
             >
-              <SelectTrigger className="h-8 text-xs w-full bg-surface-2">
-                <FolderOpen className="w-3 h-3 mr-1 text-text-muted shrink-0" />
+              <SelectTrigger
+                aria-label="Filter by collection"
+                className="text-sm w-full"
+              >
+                <FolderOpen className="w-5 h-5 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Collection" />
               </SelectTrigger>
               <SelectContent>
@@ -263,8 +270,11 @@ export function RecordingsPage() {
                 setOrder(val === "title" ? "asc" : "desc");
               }}
             >
-              <SelectTrigger className="h-8 text-xs w-full bg-surface-2">
-                <ArrowUpDown className="w-3 h-3 mr-1 text-text-muted shrink-0" />
+              <SelectTrigger
+                aria-label="Sort recordings"
+                className="text-sm w-full"
+              >
+                <ArrowUpDown className="w-5 h-5 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -285,7 +295,7 @@ export function RecordingsPage() {
               className="h-7 w-7 rounded-md"
               aria-label="List view"
             >
-              <List className="h-3.5 w-3.5" />
+              <List className="h-5 w-5" />
             </Button>
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
@@ -294,7 +304,7 @@ export function RecordingsPage() {
               className="h-7 w-7 rounded-md"
               aria-label="Grid view"
             >
-              <LayoutGrid className="h-3.5 w-3.5" />
+              <LayoutGrid className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -310,7 +320,7 @@ export function RecordingsPage() {
           <h3 className="text-base font-bold text-text-primary">
             Failed to Load Recordings
           </h3>
-          <p className="max-w-sm mt-1 text-xs text-text-secondary">
+          <p className="max-w-sm mt-1 text-sm text-text-secondary">
             {error instanceof Error
               ? error.message
               : "Could not connect to the backend REST API."}
@@ -321,7 +331,7 @@ export function RecordingsPage() {
             onClick={() => refetch()}
             className="mt-4"
           >
-            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Retry Connection
+            <RotateCcw className="w-5 h-5 mr-1" /> Retry Connection
           </Button>
         </div>
       ) : isLoading ? (
@@ -355,7 +365,7 @@ export function RecordingsPage() {
           <h3 className="text-sm font-semibold text-text-primary">
             {search ? `No recordings match "${search}"` : "No recordings yet"}
           </h3>
-          <p className="max-w-sm mt-1 text-xs text-text-secondary">
+          <p className="max-w-sm mt-1 text-sm text-text-secondary">
             {search
               ? "Try adjusting your search terms or filter settings."
               : "Upload an audio recording to initiate transcription and AI insight extraction."}
@@ -384,28 +394,28 @@ export function RecordingsPage() {
                 <div className="min-w-0">
                   <Link
                     to={`/app/recordings/${rec.id}`}
-                    className="text-xs sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline block truncate"
+                    className="text-sm sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline block truncate"
                   >
                     {rec.title}
                   </Link>
-                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-text-muted">
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-text-muted">
                     {rec.collection_name && (
                       <>
                         <span className="flex items-center gap-1 text-text-secondary">
-                          <FolderOpen className="h-3 w-3 text-accent" />
+                          <FolderOpen className="h-5 w-5 text-accent" />
                           {rec.collection_name}
                         </span>
                         <span>•</span>
                       </>
                     )}
                     <span className="flex items-center gap-1 font-mono">
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-5 w-5" />
                       {formatDuration(rec.duration_seconds)}
                     </span>
                     <span>•</span>
                     <span>{formatDate(rec.created_at)}</span>
                     <span>•</span>
-                    <span className="font-mono text-[10px]">
+                    <span className="font-mono text-xs">
                       {(rec.file_size_bytes / (1024 * 1024)).toFixed(1)} MB
                     </span>
                   </div>
@@ -416,7 +426,7 @@ export function RecordingsPage() {
               <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
                 <div className="flex items-center gap-1.5">
                   {(rec.status === "ready" || rec.status === "completed") && (
-                    <Badge variant="success" className="font-mono text-[10px]">
+                    <Badge variant="success" className="font-mono text-xs">
                       Completed
                     </Badge>
                   )}
@@ -424,21 +434,18 @@ export function RecordingsPage() {
                     rec.status === "processing") && (
                     <Badge
                       variant="warning"
-                      className="font-mono text-[10px] animate-pulse"
+                      className="font-mono text-xs animate-pulse"
                     >
                       Processing...
                     </Badge>
                   )}
                   {rec.status === "queued" && (
-                    <Badge
-                      variant="secondary"
-                      className="font-mono text-[10px]"
-                    >
+                    <Badge variant="secondary" className="font-mono text-xs">
                       Queued
                     </Badge>
                   )}
                   {rec.status === "failed" && (
-                    <Badge variant="danger" className="font-mono text-[10px]">
+                    <Badge variant="danger" className="font-mono text-xs">
                       Failed
                     </Badge>
                   )}
@@ -451,10 +458,10 @@ export function RecordingsPage() {
                       size="sm"
                       onClick={() => retryMutation.mutate(rec.id)}
                       isLoading={retryMutation.isPending}
-                      className="h-7 text-xs font-medium text-warning border-warning/30 hover:bg-warning-subtle"
+                      className="h-7 text-sm font-medium text-warning border-warning/30 hover:bg-warning-subtle"
                       title="Retry Transcription"
                     >
-                      <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry
+                      <RotateCw className="w-5 h-5 mr-1" /> Retry
                     </Button>
                   )}
 
@@ -462,9 +469,9 @@ export function RecordingsPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="h-7 text-xs font-medium"
+                      className="h-7 text-sm font-medium"
                     >
-                      <Play className="w-3 h-3 mr-1 text-accent" /> Workspace
+                      <Play className="w-5 h-5 mr-1 text-accent" /> Workspace
                     </Button>
                   </Link>
 
@@ -475,7 +482,7 @@ export function RecordingsPage() {
                     className="h-7 w-7 text-text-muted hover:text-danger"
                     aria-label="Delete recording"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
@@ -493,14 +500,11 @@ export function RecordingsPage() {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="h-8.5 w-8.5 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent transition-colors">
-                    <Mic className="h-4 w-4" />
+                    <Mic className="h-5 w-5" />
                   </div>
                   <div className="flex items-center gap-1.5">
                     {(rec.status === "ready" || rec.status === "completed") && (
-                      <Badge
-                        variant="success"
-                        className="font-mono text-[10px]"
-                      >
+                      <Badge variant="success" className="font-mono text-xs">
                         Completed
                       </Badge>
                     )}
@@ -508,21 +512,18 @@ export function RecordingsPage() {
                       rec.status === "processing") && (
                       <Badge
                         variant="warning"
-                        className="font-mono text-[10px] animate-pulse"
+                        className="font-mono text-xs animate-pulse"
                       >
                         Processing...
                       </Badge>
                     )}
                     {rec.status === "queued" && (
-                      <Badge
-                        variant="secondary"
-                        className="font-mono text-[10px]"
-                      >
+                      <Badge variant="secondary" className="font-mono text-xs">
                         Queued
                       </Badge>
                     )}
                     {rec.status === "failed" && (
-                      <Badge variant="danger" className="font-mono text-[10px]">
+                      <Badge variant="danger" className="font-mono text-xs">
                         Failed
                       </Badge>
                     )}
@@ -532,20 +533,20 @@ export function RecordingsPage() {
                 <div>
                   <Link
                     to={`/app/recordings/${rec.id}`}
-                    className="text-xs sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline line-clamp-2"
+                    className="text-sm sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline line-clamp-2"
                   >
                     {rec.title}
                   </Link>
-                  <p className="text-[11px] text-text-muted mt-0.5 truncate">
+                  <p className="text-xs text-text-muted mt-0.5 truncate">
                     {rec.filename}
                   </p>
                 </div>
               </div>
 
               <div className="pt-2.5 border-t border-border/50 space-y-2.5">
-                <div className="flex items-center justify-between text-[11px] text-text-muted">
+                <div className="flex items-center justify-between text-xs text-text-muted">
                   <span className="flex items-center gap-1 font-mono">
-                    <Clock className="h-3 w-3" />
+                    <Clock className="h-5 w-5" />
                     {formatDuration(rec.duration_seconds)}
                   </span>
                   <span>{formatDate(rec.created_at)}</span>
@@ -556,9 +557,9 @@ export function RecordingsPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="w-full text-xs h-7"
+                      className="w-full text-sm h-7"
                     >
-                      <Play className="w-3 h-3 mr-1 text-accent" /> Open
+                      <Play className="w-5 h-5 mr-1 text-accent" /> Open
                       Workspace
                     </Button>
                   </Link>
@@ -569,7 +570,7 @@ export function RecordingsPage() {
                     className="h-7 w-7 text-text-muted hover:text-danger"
                     aria-label="Delete recording"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
@@ -588,7 +589,7 @@ export function RecordingsPage() {
             <DialogTitle className="text-base sm:text-lg">
               Delete Audio Recording?
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
+            <DialogDescription className="text-sm sm:text-sm">
               Are you sure you want to permanently delete "{deleteTarget?.title}
               "? All generated transcripts, decisions, and files will be
               removed.

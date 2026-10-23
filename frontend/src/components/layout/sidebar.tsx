@@ -70,7 +70,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           aria-current={active ? "page" : undefined}
           className={cn("nav-item", active && "is-active")}
         >
-          <Icon size={24} strokeWidth={1.8} />
+          <Icon size={26} strokeWidth={1.8} />
           <span>{label}</span>
           {active && <span className="nav-dot" />}
         </Link>
@@ -80,7 +80,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
     <>
       <Link to="/app/overview" onClick={onClose} className="brand-lockup">
         <span className="brand-mark">
-          <AudioWaveform size={23} />
+          <AudioWaveform size={28} />
         </span>
         <span>
           voxmind<span className="brand-period">.</span>
@@ -134,7 +134,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
                 navigate("/app/settings");
               }}
             >
-              <Settings2 className="mr-2 h-4 w-4" />
+              <Settings2 className="mr-2 h-5 w-5" />
               Account settings
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -146,7 +146,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
                 navigate("/login");
               }}
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="mr-2 h-5 w-5" />
               {authenticated ? "Sign out" : "Sign in"}
             </DropdownMenuItem>
           </DropdownMenuContent>

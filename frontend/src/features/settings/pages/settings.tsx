@@ -211,39 +211,27 @@ export function SettingsPage() {
     switch (status) {
       case "healthy":
         return (
-          <Badge
-            variant="success"
-            className="text-[10px] flex items-center gap-1"
-          >
-            <CheckCircle2 className="w-3 h-3" /> Healthy
+          <Badge variant="success" className="text-xs flex items-center gap-1">
+            <CheckCircle2 className="w-5 h-5" /> Healthy
           </Badge>
         );
       case "degraded":
         return (
-          <Badge
-            variant="warning"
-            className="text-[10px] flex items-center gap-1"
-          >
-            <AlertCircle className="w-3 h-3" /> Degraded
+          <Badge variant="warning" className="text-xs flex items-center gap-1">
+            <AlertCircle className="w-5 h-5" /> Degraded
           </Badge>
         );
       case "unreachable":
       case "unhealthy":
         return (
-          <Badge
-            variant="danger"
-            className="text-[10px] flex items-center gap-1"
-          >
-            <AlertCircle className="w-3 h-3" /> Unreachable
+          <Badge variant="danger" className="text-xs flex items-center gap-1">
+            <AlertCircle className="w-5 h-5" /> Unreachable
           </Badge>
         );
       default:
         return (
-          <Badge
-            variant="outline"
-            className="text-[10px] flex items-center gap-1"
-          >
-            <HelpCircle className="w-3 h-3" /> Offline
+          <Badge variant="outline" className="text-xs flex items-center gap-1">
+            <HelpCircle className="w-5 h-5" /> Offline
           </Badge>
         );
     }
@@ -257,7 +245,7 @@ export function SettingsPage() {
         <h1 className="text-xl font-bold tracking-tight text-text-primary">
           Make yourself at home
         </h1>
-        <p className="mt-1 text-xs text-text-secondary">
+        <p className="mt-1 text-sm text-text-secondary">
           Your profile, your preferences, your workspace.
         </p>
       </div>
@@ -269,12 +257,12 @@ export function SettingsPage() {
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-accent" />
+            <Activity className="h-5 w-5 text-accent" />
             <div>
               <h2 className="text-sm font-semibold text-text-primary">
                 Live Diagnostics Hub
               </h2>
-              <p className="text-[11px] text-text-muted">
+              <p className="text-xs text-text-muted">
                 Real-time connectivity and status across local AI runtimes and
                 database engines.
               </p>
@@ -287,7 +275,7 @@ export function SettingsPage() {
               size="sm"
               onClick={handleRefreshDiagnostics}
               disabled={diagnosticsLoading}
-              className="h-8 text-xs"
+              className="h-8 text-sm"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 mr-1 ${diagnosticsLoading ? "animate-spin" : ""}`}
@@ -302,13 +290,12 @@ export function SettingsPage() {
             {/* Database */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-accent" /> Primary
-                  Database
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Database className="w-5 h-5 text-accent" /> Primary Database
                 </span>
                 {getStatusBadge(diagnostics.services.database?.status)}
               </div>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 {diagnostics.services.database?.message ||
                   "MongoDB Operational"}
               </p>
@@ -317,13 +304,13 @@ export function SettingsPage() {
             {/* Vector Storage */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-emerald-500" /> Vector
-                  Retrieval Engine
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Layers className="w-5 h-5 text-success" /> Vector Retrieval
+                  Engine
                 </span>
                 {getStatusBadge(diagnostics.services.vector_storage?.status)}
               </div>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 {diagnostics.services.vector_storage?.message ||
                   "Cosine Similarity Retrieval Active"}
               </p>
@@ -332,8 +319,8 @@ export function SettingsPage() {
             {/* BullMQ Worker / Redis */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5 text-blue-500" /> BullMQ
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Server className="w-5 h-5 text-blue-500" /> BullMQ
                   Asynchronous Queues
                 </span>
                 {getStatusBadge(
@@ -341,7 +328,7 @@ export function SettingsPage() {
                     diagnostics.services.redis?.status,
                 )}
               </div>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 {diagnostics.services.celery?.message ||
                   "BullMQ Audio & AI Queues Initialized"}
               </p>
@@ -350,13 +337,13 @@ export function SettingsPage() {
             {/* faster-whisper */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Radio className="w-3.5 h-3.5 text-violet-400" />{" "}
-                  Speech-to-Text Engine
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Radio className="w-5 h-5 text-violet-400" /> Speech-to-Text
+                  Engine
                 </span>
                 {getStatusBadge(diagnostics.services.whisper?.status)}
               </div>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 {diagnostics.services.whisper?.message ||
                   "faster-whisper CPU int8"}
               </p>
@@ -365,13 +352,12 @@ export function SettingsPage() {
             {/* Ollama LLM */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-amber-500" /> Ollama Local
-                  LLM
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Cpu className="w-5 h-5 text-amber-500" /> Ollama Local LLM
                 </span>
                 {getStatusBadge(diagnostics.services.ollama?.status)}
               </div>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 {diagnostics.services.ollama?.message ||
                   "Ollama Model Pipeline"}
               </p>
@@ -380,21 +366,21 @@ export function SettingsPage() {
             {/* Local Storage */}
             <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-text-secondary" />{" "}
-                  Audio Storage Volume
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <HardDrive className="w-5 h-5 text-text-secondary" /> Audio
+                  Storage Volume
                 </span>
                 {getStatusBadge(diagnostics.services.storage?.status)}
               </div>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 {diagnostics.services.storage?.message ||
                   diagnostics.services.storage?.path}
               </p>
             </div>
           </div>
         ) : (
-          <div className="p-4 rounded-lg bg-surface-2 text-xs text-text-muted flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-warning" />
+          <div className="p-4 rounded-lg bg-surface-2 text-sm text-text-muted flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-warning" />
             <span>
               Diagnostics telemetry unreachable or backend starting up.
             </span>
@@ -406,12 +392,12 @@ export function SettingsPage() {
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-accent" />
+            <User className="h-5 w-5 text-accent" />
             <h2 className="text-sm font-semibold text-text-primary">
               Your profile
             </h2>
           </div>
-          <Badge variant="violet" className="text-[10px]">
+          <Badge variant="violet" className="text-xs">
             Tenant Admin
           </Badge>
         </div>
@@ -419,10 +405,14 @@ export function SettingsPage() {
         <form onSubmit={handleSaveProfile} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-1"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 Full Name
               </label>
               <Input
+                id="settings-field-1"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Elena Vance"
@@ -431,10 +421,14 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-2"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 Email Address
               </label>
               <Input
+                id="settings-field-2"
                 type="email"
                 value={email}
                 disabled
@@ -452,12 +446,12 @@ export function SettingsPage() {
             >
               {isSavingProfile ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-1.5 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  <Save className="w-5 h-5 mr-1.5" />
                   Save Profile
                 </>
               )}
@@ -472,7 +466,7 @@ export function SettingsPage() {
           <h2 className="text-sm font-semibold text-text-primary">
             Appearance & Interface Theme
           </h2>
-          <p className="text-xs text-text-muted mt-0.5">
+          <p className="text-sm text-text-muted mt-0.5">
             Switch between Studio dark and Paper light themes.
           </p>
         </div>
@@ -488,16 +482,16 @@ export function SettingsPage() {
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Moon className="h-4 w-4 text-accent" />
+              <Moon className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-xs font-bold text-text-primary">
+                <p className="text-sm font-bold text-text-primary">
                   Studio dark
                 </p>
-                <p className="text-[10px] text-text-muted">Graphite & blue</p>
+                <p className="text-xs text-text-muted">Graphite & blue</p>
               </div>
             </div>
             {theme === "dark" && (
-              <CheckCircle2 className="h-4 w-4 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-accent" />
             )}
           </button>
 
@@ -511,16 +505,16 @@ export function SettingsPage() {
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Sun className="h-4 w-4 text-warning" />
+              <Sun className="h-5 w-5 text-warning" />
               <div>
-                <p className="text-xs font-bold text-text-primary">
+                <p className="text-sm font-bold text-text-primary">
                   Paper light
                 </p>
-                <p className="text-[10px] text-text-muted">White & blue</p>
+                <p className="text-xs text-text-muted">White & blue</p>
               </div>
             </div>
             {theme === "light" && (
-              <CheckCircle2 className="h-4 w-4 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-accent" />
             )}
           </button>
 
@@ -534,16 +528,16 @@ export function SettingsPage() {
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Monitor className="h-4 w-4 text-text-secondary" />
+              <Monitor className="h-5 w-5 text-text-secondary" />
               <div>
-                <p className="text-xs font-bold text-text-primary">
+                <p className="text-sm font-bold text-text-primary">
                   System Match
                 </p>
-                <p className="text-[10px] text-text-muted">OS preferences</p>
+                <p className="text-xs text-text-muted">OS preferences</p>
               </div>
             </div>
             {theme === "system" && (
-              <CheckCircle2 className="h-4 w-4 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-accent" />
             )}
           </button>
         </div>
@@ -553,13 +547,13 @@ export function SettingsPage() {
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
-            <Cpu className="h-4 w-4 text-accent" />
+            <Cpu className="h-5 w-5 text-accent" />
             <h2 className="text-sm font-semibold text-text-primary">
               Local AI Engine Configuration
             </h2>
           </div>
-          <span className="text-xs text-emerald-500 font-mono flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+          <span className="text-sm text-success font-mono flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-success inline-block animate-pulse" />
             Node-managed
           </span>
         </div>
@@ -567,10 +561,14 @@ export function SettingsPage() {
         <form onSubmit={handleSaveAi} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-3"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 Ollama Base URL
               </label>
               <Input
+                id="settings-field-3"
                 value={ollamaUrl}
                 readOnly
                 className="opacity-80"
@@ -579,10 +577,14 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-4"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 Ollama Model Name
               </label>
               <Input
+                id="settings-field-4"
                 value={ollamaModel}
                 readOnly
                 className="opacity-80"
@@ -591,10 +593,14 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-5"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 faster-whisper Model
               </label>
               <Input
+                id="settings-field-5"
                 value={whisperModel}
                 readOnly
                 className="opacity-80"
@@ -603,10 +609,14 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-6"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 Compute Device
               </label>
               <Input
+                id="settings-field-6"
                 value={whisperDevice}
                 readOnly
                 className="opacity-80"
@@ -615,8 +625,8 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-surface-2/60 border border-border text-[11px] text-text-muted flex items-start gap-2">
-            <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+          <div className="p-3 rounded-lg bg-surface-2/60 border border-border text-xs text-text-muted flex items-start gap-2">
+            <HelpCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             <span>
               In VoxMind's local-first architecture, hardware models and
               endpoints are configured node-wide via environment variables. To
@@ -631,12 +641,12 @@ export function SettingsPage() {
       <section className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
         <div className="border-b border-border/50 pb-3">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-accent" />
+            <ShieldCheck className="h-5 w-5 text-accent" />
             <h2 className="text-sm font-semibold text-text-primary">
               Password & security
             </h2>
           </div>
-          <p className="text-xs text-text-muted mt-0.5">
+          <p className="text-sm text-text-muted mt-0.5">
             Manage your master password and tenant encryption boundaries.
           </p>
         </div>
@@ -644,10 +654,14 @@ export function SettingsPage() {
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-7"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 Current Password
               </label>
               <Input
+                id="settings-field-7"
                 type="password"
                 placeholder="••••••••••••"
                 value={currentPassword}
@@ -657,10 +671,14 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+              <label
+                htmlFor="settings-field-8"
+                className="text-sm font-medium text-text-secondary mb-1.5 block"
+              >
                 New Master Password
               </label>
               <Input
+                id="settings-field-8"
                 type="password"
                 placeholder="At least 8 characters"
                 value={newPassword}
@@ -679,12 +697,12 @@ export function SettingsPage() {
             >
               {isUpdatingPassword ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-1.5 animate-spin" />
                   Updating...
                 </>
               ) : (
                 <>
-                  <Key className="w-3.5 h-3.5 mr-1.5" />
+                  <Key className="w-5 h-5 mr-1.5" />
                   Update Password
                 </>
               )}

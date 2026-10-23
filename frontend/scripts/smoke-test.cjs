@@ -96,6 +96,18 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
       .waitFor();
     checks += 1;
 
+    await page
+      .getByRole("button", { name: `Delete Review ${suffix}`, exact: true })
+      .click();
+    await page.getByRole("dialog", { name: "Delete collection?" }).waitFor();
+    await page
+      .getByRole("button", { name: "Keep collection", exact: true })
+      .click();
+    await page
+      .getByRole("heading", { name: `Review ${suffix}`, exact: true })
+      .waitFor();
+    checks += 1;
+
     // A deterministic detail fixture exercises transcript and responsive detail layouts.
     // It is not a substitute for real speech-to-text or model inference tests.
     const now = new Date().toISOString();
@@ -136,7 +148,12 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
     );
     console.log("Checking responsive screens…");
     await page.goto(`${base}/app/recordings/frontend-review-fixture`);
-    await page.getByRole("heading", { name: "Design review — a clearer workspace", exact: true }).waitFor();
+    await page
+      .getByRole("heading", {
+        name: "Design review — a clearer workspace",
+        exact: true,
+      })
+      .waitFor();
     const downloadEvent = page.waitForEvent("download");
     await page.getByRole("button", { name: /Export/ }).click();
     const download = await downloadEvent;
@@ -144,7 +161,11 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
     const chunks = [];
     for await (const chunk of stream) chunks.push(chunk);
     const markdown = Buffer.concat(chunks).toString("utf8");
-    check(markdown.includes("# Design review — a clearer workspace") && markdown.includes("**[0:00] Alex**"), "Markdown export contains actual title and transcript");
+    check(
+      markdown.includes("# Design review — a clearer workspace") &&
+        markdown.includes("**[0:00] Alex**"),
+      "Markdown export contains actual title and transcript",
+    );
     const routes = [
       "overview",
       "recordings",
@@ -160,6 +181,25 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
         await page.goto(`${base}/app/${route}`);
         await page.locator("h1").waitFor();
         await fits(`${route} at ${width}px`);
+        const geometry = await page
+          .getByRole("button", { name: "Search workspace" })
+          .evaluate((el) => ({
+            height: el.getBoundingClientRect().height,
+            icon: el.querySelector("svg").getBoundingClientRect().width,
+          }));
+        check(
+          geometry.height >= 56 && geometry.icon >= 26,
+          "Prominent search control at every viewport",
+        );
+        if (width >= 1024) {
+          check(
+            await page
+              .locator(".desktop-sidebar .nav-item svg")
+              .first()
+              .evaluate((el) => el.getBoundingClientRect().width >= 26),
+            "Large navigation icons",
+          );
+        }
         check(
           (await page.locator("main").innerText()).trim().length > 30,
           `${route} renders its content`,
@@ -238,6 +278,45 @@ const viewports = [320, 390, 768, 1024, 1440, 1920];
       .click();
     await page.getByRole("dialog").waitFor();
     await fits("Upload dialog at 390px");
+    const chooser = page.waitForEvent("filechooser");
+    await page
+      .getByRole("button", { name: "Choose audio file", exact: true })
+      .focus();
+    await page.keyboard.press("Enter");
+    await (
+      await chooser
+    ).setFiles({
+      name: "review.wav",
+      mimeType: "audio/wav",
+      buffer: Buffer.from("RIFF....WAVEfmt "),
+    });
+    await page.getByText("review.wav", { exact: true }).waitFor();
+    check(
+      (await page
+        .getByRole("textbox", { name: "Recording Title", exact: true })
+        .inputValue()) === "review",
+      "Keyboard file selection populates the recording title",
+    );
+    await page
+      .getByRole("button", { name: "Choose audio file", exact: true })
+      .evaluate((el) => {
+        const transfer = new DataTransfer();
+        transfer.items.add(
+          new File(["invalid"], "review.txt", { type: "text/plain" }),
+        );
+        el.dispatchEvent(
+          new DragEvent("drop", {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: transfer,
+          }),
+        );
+      });
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "Unsupported format .txt" })
+      .waitFor();
+    checks += 1;
     await page.keyboard.press("Escape");
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     await page.goto(`${base}/login`);

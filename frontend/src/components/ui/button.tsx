@@ -22,6 +22,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "default",
       size = "md",
       isLoading = false,
+      type = "button",
       children,
       disabled,
       ...props
@@ -46,15 +47,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizes = {
-      sm: "min-h-10 px-4 text-xs gap-1.5",
-      md: "min-h-11 px-4 text-xs gap-2",
-      lg: "min-h-12 px-6 text-sm gap-2.5",
-      icon: "h-11 w-11 p-0",
+      sm: "min-h-11 px-4 text-sm gap-2",
+      md: "min-h-12 px-5 text-sm gap-2.5",
+      lg: "min-h-13 px-6 text-base gap-2.5",
+      icon: "h-12 w-12 min-w-12 p-0",
     };
 
     return (
       <button
         ref={ref}
+        type={type}
+        data-slot="button"
+        data-size={size}
+        data-variant={variant}
+        aria-busy={isLoading || undefined}
         disabled={disabled || isLoading}
         className={cn(
           baseStyles,
@@ -64,7 +70,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         {...props}
       >
-        {isLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+        {isLoading && <Loader2 className="w-5 h-5 animate-spin shrink-0" />}
         {children}
       </button>
     );

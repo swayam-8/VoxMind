@@ -1,8 +1,15 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "secondary" | "outline" | "success" | "warning" | "danger" | "violet"
+  variant?:
+    | "default"
+    | "secondary"
+    | "outline"
+    | "success"
+    | "warning"
+    | "danger"
+    | "violet";
 }
 
 export function Badge({
@@ -18,16 +25,17 @@ export function Badge({
     warning: "bg-warning-subtle text-warning border-warning/30",
     danger: "bg-danger-subtle text-danger border-danger/30",
     violet: "bg-accent-subtle text-accent border-accent/30",
-  }
+  };
 
   return (
     <span
+      data-slot="badge"
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors select-none",
+        "inline-flex items-center gap-1.5 min-h-7 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors select-none",
         variants[variant],
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }

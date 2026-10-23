@@ -317,7 +317,7 @@ export function RecordingDetailPage() {
         <h3 className="text-base font-bold text-text-primary">
           Recording Not Found
         </h3>
-        <p className="max-w-sm mt-1 text-xs text-text-secondary">
+        <p className="max-w-sm mt-1 text-sm text-text-secondary">
           {error instanceof Error
             ? error.message
             : "The requested audio recording could not be retrieved from the database."}
@@ -325,11 +325,11 @@ export function RecordingDetailPage() {
         <div className="mt-4 flex flex-wrap gap-2 justify-center">
           <Link to="/app/recordings">
             <Button variant="secondary" size="sm">
-              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Return to Library
+              <ArrowLeft className="w-5 h-5 mr-1" /> Return to Library
             </Button>
           </Link>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Retry
+            <RotateCcw className="w-5 h-5 mr-1" /> Retry
           </Button>
         </div>
       </div>
@@ -358,7 +358,7 @@ export function RecordingDetailPage() {
               className="h-8 w-8 text-text-secondary"
               aria-label="Back to recordings"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div className="min-w-0 flex-1">
@@ -368,23 +368,23 @@ export function RecordingDetailPage() {
               </h1>
               {(recording.status === "ready" ||
                 recording.status === "completed") && (
-                <Badge variant="success" className="text-[10px]">
+                <Badge variant="success" className="text-xs">
                   Completed
                 </Badge>
               )}
               {(recording.status === "transcribing" ||
                 recording.status === "processing") && (
-                <Badge variant="warning" className="text-[10px] animate-pulse">
+                <Badge variant="warning" className="text-xs animate-pulse">
                   Processing...
                 </Badge>
               )}
               {recording.status === "queued" && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   Queued
                 </Badge>
               )}
               {recording.status === "failed" && (
-                <Badge variant="danger" className="text-[10px]">
+                <Badge variant="danger" className="text-xs">
                   Failed
                 </Badge>
               )}
@@ -392,45 +392,45 @@ export function RecordingDetailPage() {
               {/* Native Language Badge */}
               <Badge
                 variant="outline"
-                className="text-[10px] font-mono flex items-center gap-1 border-accent/30 text-accent"
+                className="text-xs font-mono flex items-center gap-1 border-accent/30 text-accent"
               >
-                <Globe className="w-3 h-3" />
+                <Globe className="w-5 h-5" />
                 {getLanguageLabel(recording.language)}
               </Badge>
 
               {/* Vector Indexing Status */}
               {recording.index_status === "completed" && (
-                <Badge variant="violet" className="text-[10px]">
+                <Badge variant="violet" className="text-xs">
                   Vector Indexed
                 </Badge>
               )}
               {recording.index_status === "indexing" && (
-                <Badge variant="warning" className="text-[10px] animate-pulse">
+                <Badge variant="warning" className="text-xs animate-pulse">
                   Indexing Chunks...
                 </Badge>
               )}
               {recording.index_status === "failed" && (
-                <Badge variant="danger" className="text-[10px]">
+                <Badge variant="danger" className="text-xs">
                   Index Failed
                 </Badge>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted mt-1">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted mt-1">
               {recording.collection_name && (
                 <>
                   <span className="flex items-center gap-1 text-text-secondary">
-                    <FolderOpen className="h-3 w-3 text-accent" />
+                    <FolderOpen className="h-5 w-5 text-accent" />
                     {recording.collection_name}
                   </span>
                   <span>•</span>
                 </>
               )}
               <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
+                <Calendar className="h-5 w-5" />
                 {new Date(recording.created_at).toLocaleDateString()}
               </span>
               <span>•</span>
-              <span className="font-mono text-[11px] text-text-muted truncate max-w-[160px] sm:max-w-xs">
+              <span className="font-mono text-xs text-text-muted truncate max-w-[160px] sm:max-w-xs">
                 {recording.filename}
               </span>
             </div>
@@ -443,10 +443,10 @@ export function RecordingDetailPage() {
             size="sm"
             onClick={() => reindexMutation.mutate()}
             disabled={reindexMutation.isPending || segments.length === 0}
-            className="text-xs h-8"
+            className="text-sm h-8"
             title="Re-chunk transcript and re-generate embeddings"
           >
-            <Database className="w-3.5 h-3.5 mr-1.5 text-accent" />
+            <Database className="w-5 h-5 mr-1.5 text-accent" />
             <span className="hidden xs:inline">Re-index</span> Vectors
           </Button>
 
@@ -454,10 +454,10 @@ export function RecordingDetailPage() {
             variant="outline"
             size="sm"
             onClick={copyTranscriptToClipboard}
-            className="text-xs h-8"
+            className="text-sm h-8"
             disabled={segments.length === 0}
           >
-            <Copy className="w-3.5 h-3.5 mr-1.5" />
+            <Copy className="w-5 h-5 mr-1.5" />
             Copy <span className="hidden xs:inline">Transcript</span>
           </Button>
 
@@ -465,9 +465,9 @@ export function RecordingDetailPage() {
             variant="secondary"
             size="sm"
             onClick={() => downloadRecordingMarkdown(recording)}
-            className="text-xs h-8"
+            className="text-sm h-8"
           >
-            <Download className="w-3.5 h-3.5 mr-1.5" />
+            <Download className="w-5 h-5 mr-1.5" />
             Export <span className="hidden xs:inline">Markdown</span>
           </Button>
         </div>
@@ -479,10 +479,10 @@ export function RecordingDetailPage() {
           <div className="flex items-center gap-2.5 min-w-0">
             <AlertCircle className="w-5 h-5 text-danger shrink-0" />
             <div className="min-w-0">
-              <h4 className="text-xs font-semibold text-danger">
+              <h4 className="text-sm font-semibold text-danger">
                 Transcription Failed
               </h4>
-              <p className="text-xs text-text-secondary mt-0.5 break-words">
+              <p className="text-sm text-text-secondary mt-0.5 break-words">
                 {recording.error_message ||
                   "An unexpected error occurred during audio transcription."}
               </p>
@@ -493,17 +493,17 @@ export function RecordingDetailPage() {
             size="sm"
             onClick={() => retryMutation.mutate()}
             isLoading={retryMutation.isPending}
-            className="text-xs text-danger border-danger/40 hover:bg-danger/10 shrink-0 self-end sm:self-center"
+            className="text-sm text-danger border-danger/40 hover:bg-danger/10 shrink-0 self-end sm:self-center"
           >
-            <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry Transcription
+            <RotateCw className="w-5 h-5 mr-1" /> Retry Transcription
           </Button>
         </div>
       )}
 
       {recording.status === "queued" && (
         <div className="p-3.5 rounded-xl border border-border bg-surface-2/60 flex items-center gap-3">
-          <Clock className="w-4 h-4 text-text-muted shrink-0" />
-          <p className="text-xs text-text-secondary">
+          <Clock className="w-5 h-5 text-text-muted shrink-0" />
+          <p className="text-sm text-text-secondary">
             Recording is queued for background processing. Local faster-whisper
             transcription will begin automatically.
           </p>
@@ -514,7 +514,7 @@ export function RecordingDetailPage() {
         recording.status === "transcribing") && (
         <div className="p-3.5 rounded-xl border border-accent/30 bg-accent-subtle/50 flex items-center gap-3">
           <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
-          <p className="text-xs text-text-primary">
+          <p className="text-sm text-text-primary">
             Transcribing speech locally with <strong>faster-whisper</strong> in
             its native language... Live timestamped dialogue segments will
             appear automatically.
@@ -549,15 +549,15 @@ export function RecordingDetailPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
               <div>
                 <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-accent shrink-0" />
+                  <Layers className="h-5 w-5 text-accent shrink-0" />
                   <span>Synchronized Transcript</span>
                   {recording.language && (
-                    <span className="text-xs font-normal text-text-muted">
+                    <span className="text-sm font-normal text-text-muted">
                       ({getLanguageLabel(recording.language)})
                     </span>
                   )}
                 </h3>
-                <p className="text-xs text-text-muted mt-0.5">
+                <p className="text-sm text-text-muted mt-0.5">
                   Click any timestamp to seek playback
                 </p>
               </div>
@@ -567,25 +567,25 @@ export function RecordingDetailPage() {
                 <button
                   type="button"
                   onClick={() => setAutoScroll(!autoScroll)}
-                  className={`px-2 py-1 rounded text-[11px] font-mono border transition-colors flex items-center gap-1 ${
+                  className={`px-2 py-1 rounded text-xs font-mono border transition-colors flex items-center gap-1 ${
                     autoScroll
                       ? "bg-accent-subtle text-accent border-accent/30"
                       : "bg-surface-2 text-text-muted border-border"
                   }`}
                   title="Toggle auto-scroll with audio playback"
                 >
-                  <Radio className="w-3 h-3" />
+                  <Radio className="w-5 h-5" />
                   <span>Auto-scroll</span>
                 </button>
 
                 {/* In-Transcript Search */}
                 <div className="relative flex-1 sm:w-52">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-muted" />
+                  <Search className="absolute left-2.5 top-2.5 h-5 w-5 text-text-muted" />
                   <Input
                     placeholder="Filter dialogue..."
                     value={transcriptSearch}
                     onChange={(e) => setTranscriptSearch(e.target.value)}
-                    className="pl-8 h-8 text-xs bg-surface-2"
+                    className="pl-8 h-8 text-sm bg-surface-2"
                   />
                 </div>
               </div>
@@ -594,7 +594,7 @@ export function RecordingDetailPage() {
             {/* Segments Scroll Container */}
             <div className="max-h-[500px] overflow-y-auto space-y-3 pr-1 sm:pr-2 divide-y divide-border/30">
               {segments.length === 0 ? (
-                <div className="py-12 text-center text-xs text-text-muted space-y-2">
+                <div className="py-12 text-center text-sm text-text-muted space-y-2">
                   {recording.status === "failed" ? (
                     <p className="text-danger">
                       Transcription failed. Click 'Retry Transcription' above to
@@ -615,7 +615,7 @@ export function RecordingDetailPage() {
                   )}
                 </div>
               ) : filteredSegments.length === 0 ? (
-                <div className="py-8 text-center text-xs text-text-muted">
+                <div className="py-8 text-center text-sm text-text-muted">
                   No dialogue matches "{transcriptSearch}".
                 </div>
               ) : (
@@ -641,17 +641,17 @@ export function RecordingDetailPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           <button
                             onClick={() => handleSeek(sTime)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-surface-2 text-accent border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all cursor-pointer shrink-0"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-xs font-semibold bg-surface-2 text-accent border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all cursor-pointer shrink-0"
                             title="Jump audio to this timestamp"
                           >
-                            <Clock className="w-3 h-3" />
+                            <Clock className="w-5 h-5" />
                             {formatTimestamp(sTime)}
                           </button>
-                          <span className="text-xs font-semibold text-text-primary truncate">
+                          <span className="text-sm font-semibold text-text-primary truncate">
                             {seg.speaker}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono text-text-muted shrink-0">
+                        <span className="text-xs font-mono text-text-muted shrink-0">
                           {(conf * 100).toFixed(0)}% conf
                         </span>
                       </div>
@@ -671,13 +671,13 @@ export function RecordingDetailPage() {
         <div className="lg:col-span-5 rounded-xl border border-border bg-surface-1 p-4 sm:p-5 shadow-sm space-y-4 min-w-0">
           <div className="flex items-center justify-between border-b border-border/50 pb-3 gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <Sparkles className="h-4 w-4 text-accent shrink-0" />
+              <Sparkles className="h-5 w-5 text-accent shrink-0" />
               <h3 className="text-sm font-semibold text-text-primary truncate">
                 Voice Intelligence
               </h3>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="violet" className="text-[10px] font-mono">
+              <Badge variant="violet" className="text-xs font-mono">
                 {summary?.model_name || "llama3.2"}
               </Badge>
               <Button
@@ -685,10 +685,10 @@ export function RecordingDetailPage() {
                 size="sm"
                 onClick={() => regenerateMutation.mutate()}
                 isLoading={regenerateMutation.isPending}
-                className="h-7 text-xs px-2"
+                className="h-7 text-sm px-2"
                 title="Regenerate AI analysis with Ollama"
               >
-                <RotateCw className="w-3 h-3 mr-1" /> Regenerate
+                <RotateCw className="w-5 h-5 mr-1" /> Regenerate
               </Button>
             </div>
           </div>
@@ -698,7 +698,7 @@ export function RecordingDetailPage() {
             summary?.status === "pending") && (
             <div className="p-3.5 rounded-lg bg-accent-subtle/50 border border-accent/30 flex items-center gap-3">
               <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
-              <p className="text-xs text-text-primary">
+              <p className="text-sm text-text-primary">
                 Ollama ({summary?.model_name || "llama3.2"}) is analyzing
                 transcript...
               </p>
@@ -707,9 +707,9 @@ export function RecordingDetailPage() {
 
           {/* Analysis Failed State */}
           {summary?.status === "failed" && (
-            <div className="p-3 rounded-lg bg-danger-subtle border border-danger/30 flex items-center justify-between gap-2 text-xs">
+            <div className="p-3 rounded-lg bg-danger-subtle border border-danger/30 flex items-center justify-between gap-2 text-sm">
               <div className="flex items-center gap-1.5 text-danger min-w-0">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+                <AlertCircle className="w-5 h-5 shrink-0" />
                 <span className="truncate">
                   {summary.error_message || "Analysis failed."}
                 </span>
@@ -718,7 +718,7 @@ export function RecordingDetailPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => regenerateMutation.mutate()}
-                className="h-6 text-[11px] text-danger border-danger/40 hover:bg-danger/10 shrink-0"
+                className="h-6 text-xs text-danger border-danger/40 hover:bg-danger/10 shrink-0"
               >
                 Retry
               </Button>
@@ -726,17 +726,17 @@ export function RecordingDetailPage() {
           )}
 
           <Tabs defaultValue="summary" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-9 p-1 text-xs">
-              <TabsTrigger value="summary" className="text-[11px] sm:text-xs">
+            <TabsList className="grid w-full grid-cols-4 h-9 p-1 text-sm">
+              <TabsTrigger value="summary" className="text-xs sm:text-sm">
                 Summary
               </TabsTrigger>
-              <TabsTrigger value="decisions" className="text-[11px] sm:text-xs">
+              <TabsTrigger value="decisions" className="text-xs sm:text-sm">
                 Decisions
               </TabsTrigger>
-              <TabsTrigger value="actions" className="text-[11px] sm:text-xs">
+              <TabsTrigger value="actions" className="text-xs sm:text-sm">
                 Actions
               </TabsTrigger>
-              <TabsTrigger value="ask" className="text-[11px] sm:text-xs">
+              <TabsTrigger value="ask" className="text-xs sm:text-sm">
                 Ask AI
               </TabsTrigger>
             </TabsList>
@@ -744,7 +744,7 @@ export function RecordingDetailPage() {
             {/* Tab 1: Executive Summary & Takeaways */}
             <TabsContent value="summary" className="space-y-4 pt-3">
               <div className="p-4 rounded-lg bg-surface-2/60 border border-border space-y-3">
-                <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">
                   Executive Briefing
                 </h4>
                 <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line break-words">
@@ -755,15 +755,15 @@ export function RecordingDetailPage() {
 
               {summary?.key_takeaways && summary.key_takeaways.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent" /> Key
+                  <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-5 h-5 text-accent" /> Key
                     Takeaways
                   </h4>
                   <div className="space-y-1.5">
                     {summary.key_takeaways.map((point: string, idx: number) => (
                       <div
                         key={idx}
-                        className="flex items-start gap-2 p-2 rounded-lg bg-surface-2/40 border border-border/40 text-xs text-text-secondary"
+                        className="flex items-start gap-2 p-2 rounded-lg bg-surface-2/40 border border-border/40 text-sm text-text-secondary"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
                         <p className="leading-relaxed break-words">{point}</p>
@@ -775,12 +775,12 @@ export function RecordingDetailPage() {
 
               {summary?.topics && summary.topics.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+                  <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
                     Extracted Topics
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {summary.topics.map((topic: string, i: number) => (
-                      <Badge key={i} variant="outline" className="text-xs">
+                      <Badge key={i} variant="outline" className="text-sm">
                         #{topic}
                       </Badge>
                     ))}
@@ -792,7 +792,7 @@ export function RecordingDetailPage() {
             {/* Tab 2: Key Decisions */}
             <TabsContent value="decisions" className="space-y-3 pt-3">
               {!summary?.decisions || summary.decisions.length === 0 ? (
-                <div className="py-8 text-center text-xs text-text-muted">
+                <div className="py-8 text-center text-sm text-text-muted">
                   No concrete decisions identified in this transcript.
                 </div>
               ) : (
@@ -805,15 +805,15 @@ export function RecordingDetailPage() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-1.5 min-w-0">
-                          <Target className="w-3.5 h-3.5 text-accent mt-0.5 shrink-0" />
-                          <h5 className="text-xs font-bold text-text-primary leading-snug break-words">
+                          <Target className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                          <h5 className="text-sm font-bold text-text-primary leading-snug break-words">
                             {dec.decision}
                           </h5>
                         </div>
                         {ts !== undefined && ts !== null && (
                           <button
                             onClick={() => handleSeek(Number(ts))}
-                            className="shrink-0 px-1.5 py-0.5 rounded font-mono text-[10px] text-accent bg-accent-subtle border border-accent/20 hover:bg-accent hover:text-white transition-colors cursor-pointer"
+                            className="shrink-0 px-1.5 py-0.5 rounded font-mono text-xs text-accent bg-accent-subtle border border-accent/20 hover:bg-accent hover:text-white transition-colors cursor-pointer"
                             title="Seek audio to verified decision source"
                           >
                             [{formatTimestamp(Number(ts))}]
@@ -821,7 +821,7 @@ export function RecordingDetailPage() {
                         )}
                       </div>
                       {dec.context && (
-                        <p className="text-xs text-text-secondary leading-relaxed pl-5 break-words">
+                        <p className="text-sm text-text-secondary leading-relaxed pl-5 break-words">
                           {dec.context}
                         </p>
                       )}
@@ -834,7 +834,7 @@ export function RecordingDetailPage() {
             {/* Tab 3: Action Items Checklist */}
             <TabsContent value="actions" className="space-y-3 pt-3">
               {actionItems.length === 0 ? (
-                <div className="py-8 text-center text-xs text-text-muted">
+                <div className="py-8 text-center text-sm text-text-muted">
                   No action items assigned in this transcript.
                 </div>
               ) : (
@@ -863,7 +863,7 @@ export function RecordingDetailPage() {
                         />
                         <div className="flex-1 min-w-0">
                           <p
-                            className={`text-xs font-semibold leading-snug break-words ${
+                            className={`text-sm font-semibold leading-snug break-words ${
                               act.completed
                                 ? "line-through text-text-muted"
                                 : "text-text-primary"
@@ -874,7 +874,7 @@ export function RecordingDetailPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-text-muted pt-1 border-t border-border/40 gap-2">
+                      <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border/40 gap-2">
                         <span className="text-text-secondary font-medium truncate">
                           Assignee: {act.assignee || "Unassigned"}
                         </span>
@@ -882,7 +882,7 @@ export function RecordingDetailPage() {
                           <button
                             type="button"
                             onClick={() => handleSeek(Number(ts))}
-                            className="px-1.5 py-0.5 rounded font-mono text-[10px] text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer shrink-0"
+                            className="px-1.5 py-0.5 rounded font-mono text-xs text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer shrink-0"
                             title="Seek to audio where task was assigned"
                           >
                             [{formatTimestamp(Number(ts))}]
@@ -909,7 +909,7 @@ export function RecordingDetailPage() {
                       }
                     }}
                     disabled={askMutation.isPending}
-                    className="h-8 text-xs bg-surface-2 flex-1"
+                    className="h-8 text-sm bg-surface-2 flex-1"
                   />
                   <Button
                     variant="default"
@@ -921,12 +921,12 @@ export function RecordingDetailPage() {
                     }}
                     isLoading={askMutation.isPending}
                     disabled={!questionText.trim()}
-                    className="h-8 text-xs shrink-0"
+                    className="h-8 text-sm shrink-0"
                   >
-                    <Send className="w-3.5 h-3.5 mr-1" /> Ask
+                    <Send className="w-5 h-5 mr-1" /> Ask
                   </Button>
                 </div>
-                <p className="text-[11px] text-text-muted">
+                <p className="text-xs text-text-muted">
                   Grounded solely in this recording's transcript without
                   hallucination.
                 </p>
@@ -935,33 +935,31 @@ export function RecordingDetailPage() {
               {qaResult && (
                 <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-text-primary">
+                    <span className="text-sm font-semibold text-text-primary">
                       Answer
                     </span>
                     <Badge
                       variant={
                         qaResult.supported_by_transcript ? "success" : "warning"
                       }
-                      className="text-[10px]"
+                      className="text-xs"
                     >
                       {qaResult.supported_by_transcript
                         ? "Supported by Transcript"
                         : "Not Found"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-text-secondary leading-relaxed break-words">
+                  <p className="text-sm text-text-secondary leading-relaxed break-words">
                     {qaResult.answer}
                   </p>
                   {qaResult.timestamps && qaResult.timestamps.length > 0 && (
                     <div className="pt-2 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[11px] text-text-muted">
-                        Evidence:
-                      </span>
+                      <span className="text-xs text-text-muted">Evidence:</span>
                       {qaResult.timestamps.map((t: number, i: number) => (
                         <button
                           key={i}
                           onClick={() => handleSeek(t)}
-                          className="px-1.5 py-0.5 rounded font-mono text-[10px] text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer"
+                          className="px-1.5 py-0.5 rounded font-mono text-xs text-accent bg-accent-subtle hover:bg-accent hover:text-white transition-colors cursor-pointer"
                           title="Seek audio to verified evidence"
                         >
                           [{formatTimestamp(t)}]

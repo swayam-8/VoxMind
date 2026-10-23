@@ -181,11 +181,11 @@ export function AskPage() {
             <h1 className="text-xl font-bold tracking-tight text-text-primary">
               Connect the dots
             </h1>
-            <Badge variant="violet" className="text-[10px]">
+            <Badge variant="violet" className="text-xs">
               Grounded in your recordings
             </Badge>
           </div>
-          <p className="mt-0.5 text-xs text-text-secondary">
+          <p className="mt-0.5 text-sm text-text-secondary">
             One question. A whole library of perspective.
           </p>
         </div>
@@ -195,24 +195,24 @@ export function AskPage() {
           <div className="flex items-center bg-surface-2 p-0.5 rounded-lg border border-border">
             <button
               onClick={() => setMode("rag")}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              className={`px-2.5 py-1 text-sm font-medium rounded-md transition-colors ${
                 mode === "rag"
                   ? "bg-accent text-accent-foreground shadow-xs"
                   : "text-text-muted hover:text-text-primary"
               }`}
             >
-              <Sparkles className="w-3 h-3 inline mr-1" />
+              <Sparkles className="w-5 h-5 inline mr-1" />
               Ask AI
             </button>
             <button
               onClick={() => setMode("search")}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              className={`px-2.5 py-1 text-sm font-medium rounded-md transition-colors ${
                 mode === "search"
                   ? "bg-accent text-accent-foreground shadow-xs"
                   : "text-text-muted hover:text-text-primary"
               }`}
             >
-              <Search className="w-3 h-3 inline mr-1" />
+              <Search className="w-5 h-5 inline mr-1" />
               Passages
             </button>
           </div>
@@ -220,7 +220,7 @@ export function AskPage() {
           {/* Scope Selector */}
           <div className="w-56">
             <Select value={scope} onValueChange={setScope}>
-              <SelectTrigger className="h-8.5 text-xs">
+              <SelectTrigger className="h-8.5 text-sm">
                 <SelectValue placeholder="Scope" />
               </SelectTrigger>
               <SelectContent>
@@ -250,23 +250,23 @@ export function AskPage() {
               <h3 className="text-base font-bold text-text-primary">
                 What would you like to know from your recordings?
               </h3>
-              <p className="mt-1 text-xs text-text-secondary leading-relaxed">
+              <p className="mt-1 text-sm text-text-secondary leading-relaxed">
                 Explore your conversations, connect ideas, and follow answers
                 back to the moment they were said.
               </p>
 
               <div className="mt-6 w-full space-y-2">
-                <div className="text-[11px] font-semibold text-text-muted uppercase tracking-wider text-left pl-1">
+                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider text-left pl-1">
                   Suggested Questions
                 </div>
                 {PROMPT_SUGGESTIONS.map((prompt, i) => (
                   <button
                     key={i}
                     onClick={() => handleSend(prompt)}
-                    className="w-full p-2.5 rounded-lg border border-border bg-surface-1 text-left text-xs text-text-primary hover:border-accent/40 hover:bg-surface-2 transition-all flex items-center justify-between group cursor-pointer"
+                    className="w-full p-2.5 rounded-lg border border-border bg-surface-1 text-left text-sm text-text-primary hover:border-accent/40 hover:bg-surface-2 transition-all flex items-center justify-between group cursor-pointer"
                   >
                     <span>{prompt}</span>
-                    <ArrowRight className="h-3.5 w-3.5 text-text-muted group-hover:text-accent transition-colors" />
+                    <ArrowRight className="h-5 w-5 text-text-muted group-hover:text-accent transition-colors" />
                   </button>
                 ))}
               </div>
@@ -286,22 +286,22 @@ export function AskPage() {
                       : "bg-surface-1 border border-border shadow-xs text-text-primary"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-4 text-[10px] opacity-70">
+                  <div className="flex items-center justify-between gap-4 text-xs opacity-70">
                     <span className="font-semibold uppercase tracking-wider">
                       {msg.sender === "user" ? "You" : "VoxMind Intelligence"}
                     </span>
                     <span>{msg.createdAt}</span>
                   </div>
 
-                  <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                  <p className="text-sm sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
                     {msg.text}
                   </p>
 
                   {/* Insufficient Evidence Notice */}
                   {msg.sender === "assistant" &&
                     msg.sufficientEvidence === false && (
-                      <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-400 flex items-center gap-1.5">
-                        <XCircle className="w-3.5 h-3.5 shrink-0" />
+                      <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-xs text-amber-400 flex items-center gap-1.5">
+                        <XCircle className="w-5 h-5 shrink-0" />
                         <span className="break-words">
                           No matching verified evidence was found in the
                           selected recordings.
@@ -312,8 +312,8 @@ export function AskPage() {
                   {/* Evidence Panel with Timestamp Links */}
                   {msg.evidence && msg.evidence.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-left min-w-0">
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accent uppercase tracking-wider">
-                        <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-accent uppercase tracking-wider">
+                        <HelpCircle className="w-5 h-5 shrink-0" />
                         <span>
                           Verified Audio Evidence ({msg.evidence.length})
                         </span>
@@ -323,21 +323,21 @@ export function AskPage() {
                         {msg.evidence.map((ev, idx) => (
                           <div
                             key={idx}
-                            className="p-2.5 rounded-md bg-surface-2/70 border border-border text-xs space-y-1 min-w-0"
+                            className="p-2.5 rounded-md bg-surface-2/70 border border-border text-sm space-y-1 min-w-0"
                           >
                             <div className="flex items-center justify-between gap-2 min-w-0">
                               <span className="font-medium text-text-primary truncate flex items-center gap-1 min-w-0">
-                                <Mic className="w-3 h-3 text-accent shrink-0" />
+                                <Mic className="w-5 h-5 text-accent shrink-0" />
                                 <span className="truncate">
                                   {ev.recordingTitle}
                                 </span>
                               </span>
                               <Link
                                 to={`/app/recordings/${ev.recordingId}?t=${ev.timestampSeconds}`}
-                                className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors shrink-0"
+                                className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors shrink-0"
                                 title="Listen to exact audio snippet"
                               >
-                                <Clock className="w-3 h-3" />[
+                                <Clock className="w-5 h-5" />[
                                 {ev.timestampLabel}]
                                 <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
                               </Link>
@@ -361,16 +361,16 @@ export function AskPage() {
             <h3 className="text-sm font-semibold text-text-primary">
               Search Audio Passages Semantically
             </h3>
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-sm text-text-muted mt-1">
               Enter any natural-language phrase or keyword above to find exact
               transcript timestamps across your recordings.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="text-xs text-text-muted flex items-center justify-between px-1">
+            <div className="text-sm text-text-muted flex items-center justify-between px-1">
               <span>Passages Found ({searchResults.length})</span>
-              <span className="text-[11px]">Ranked by Vector Similarity</span>
+              <span className="text-xs">Ranked by Vector Similarity</span>
             </div>
             {searchResults.map((item) => (
               <div
@@ -379,13 +379,13 @@ export function AskPage() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Mic className="h-3.5 w-3.5 text-accent shrink-0" />
-                    <span className="font-semibold text-xs text-text-primary truncate">
+                    <Mic className="h-5 w-5 text-accent shrink-0" />
+                    <span className="font-semibold text-sm text-text-primary truncate">
                       {item.recording_title}
                     </span>
                     <Badge
                       variant="outline"
-                      className="text-[10px] py-0 px-1 font-mono"
+                      className="text-xs py-0 px-1 font-mono"
                     >
                       {Math.round(item.score * 100)}% match
                     </Badge>
@@ -393,16 +393,16 @@ export function AskPage() {
 
                   <Link
                     to={`/app/recordings/${item.recording_id}?t=${item.start_time}`}
-                    className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-2 py-0.5 rounded bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors shrink-0"
+                    className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors shrink-0"
                   >
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-5 h-5" />
                     {formatTimestamp(item.start_time)} -{" "}
                     {formatTimestamp(item.end_time)}
                     <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
                   </Link>
                 </div>
 
-                <p className="text-xs text-text-secondary leading-relaxed bg-surface-2/60 p-2.5 rounded-md font-mono whitespace-pre-wrap">
+                <p className="text-sm text-text-secondary leading-relaxed bg-surface-2/60 p-2.5 rounded-md font-mono whitespace-pre-wrap">
                   {item.text}
                 </p>
               </div>
@@ -415,8 +415,8 @@ export function AskPage() {
           <div className="flex flex-col items-start max-w-xl">
             <div className="rounded-xl border border-border bg-surface-1 p-4 w-full space-y-2.5 animate-pulse">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-accent animate-spin" />
-                <span className="text-xs text-text-muted">
+                <Sparkles className="w-5 h-5 text-accent animate-spin" />
+                <span className="text-sm text-text-muted">
                   Searching embeddings & synthesizing citations...
                 </span>
               </div>
@@ -429,9 +429,9 @@ export function AskPage() {
 
         {/* Error Alert */}
         {hasError && (
-          <div className="p-3 rounded-md bg-danger-subtle border border-danger/30 text-xs text-danger flex items-center justify-between">
+          <div className="p-3 rounded-md bg-danger-subtle border border-danger/30 text-sm text-danger flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+              <AlertCircle className="w-5 h-5 shrink-0" />
               <span>
                 {errorMessage ||
                   "Local inference error. Please check Ollama and Redis connectivity."}
@@ -441,9 +441,9 @@ export function AskPage() {
               variant="outline"
               size="sm"
               onClick={() => handleSend()}
-              className="h-7 text-xs"
+              className="h-7 text-sm"
             >
-              <RotateCcw className="w-3 h-3 mr-1" /> Retry
+              <RotateCcw className="w-5 h-5 mr-1" /> Retry
             </Button>
           </div>
         )}
@@ -471,7 +471,7 @@ export function AskPage() {
           className="h-9 w-9 shrink-0"
           aria-label="Send query"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-5 w-5" />
         </Button>
       </div>
     </div>

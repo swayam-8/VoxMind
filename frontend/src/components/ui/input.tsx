@@ -14,11 +14,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         <input
+          data-slot="input"
+          aria-invalid={error || undefined}
           type={type}
           disabled={disabled}
           className={cn(
-            "flex h-11 w-full rounded-lg border bg-surface-2 px-3 py-1 text-xs text-text-primary placeholder:text-text-muted shadow-xs transition-colors",
-            "file:border-0 file:bg-transparent file:text-xs file:font-medium",
+            "flex h-12 min-h-12 w-full rounded-lg border bg-surface-1 px-3.5 py-1 text-sm text-text-primary placeholder:text-text-muted shadow-xs transition-colors",
+            "file:border-0 file:bg-transparent file:text-sm file:font-medium",
             "focus-visible:outline-none focus:border-accent focus:ring-1 focus:ring-ring",
             "disabled:cursor-not-allowed disabled:opacity-50",
             error ? "border-danger focus:ring-danger/40" : "border-border",
@@ -30,7 +32,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {helperText && (
           <p
             className={cn(
-              "mt-1 text-xs",
+              "mt-1 text-sm",
               error ? "text-danger" : "text-text-muted",
             )}
           >

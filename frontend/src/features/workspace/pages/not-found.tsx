@@ -14,7 +14,7 @@ export function NotFoundPage() {
       </p>
       <Link to="/" className="mt-4">
         <Button variant="secondary" size="sm">
-          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Return to Overview
+          <ArrowLeft className="w-5 h-5 mr-1.5" /> Return to Overview
         </Button>
       </Link>
     </div>

@@ -24,8 +24,12 @@
     --danger-subtle: #fbe8e5;
     --ring: #3159df60;
     --radius: 0.75rem;
-    --sidebar-bg: #191b23;
-    --sidebar-border: #333744;
+    --sidebar-bg: #ffffff;
+    --sidebar-foreground: #253047;
+    --sidebar-border: #e1e6f0;
+    --panel-shadow: 0 3px 16px #1c2b4b04;
+    --insight-bg: #eef3ff;
+    --insight-border: #d6e1fc;
     --header-bg: #f6f7fbed;
   }
   .dark {
@@ -53,6 +57,12 @@
     --danger-subtle: #482f2a;
     --ring: #94adff70;
     --header-bg: #11131aed;
+    --sidebar-bg: #171c29;
+    --sidebar-foreground: #edf0f7;
+    --sidebar-border: #2c354a;
+    --panel-shadow: 0 3px 16px #00000012;
+    --insight-bg: #1c2945;
+    --insight-border: #334d7c;
   }
   * {
     box-sizing: border-box;
@@ -75,7 +85,7 @@
       "Segoe UI",
       sans-serif;
     -webkit-font-smoothing: antialiased;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.6;
   }
   button,
