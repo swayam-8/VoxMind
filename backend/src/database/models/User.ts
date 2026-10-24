@@ -5,10 +5,12 @@ import crypto from 'crypto';
 export interface IUser {
   _id: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
+  googleId?: string;
   fullName: string;
   isActive: boolean;
   isSuperuser: boolean;
+  tokenVersion: number;
   createdAt: Date;
   updatedAt: Date;
   checkPassword(plainText: string): Promise<boolean>;
@@ -18,10 +20,12 @@ const UserSchema = new Schema<IUser>(
   {
     _id: { type: String, default: () => crypto.randomUUID() },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String, default: null },
+    googleId: { type: String, unique: true, sparse: true },
     fullName: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     isSuperuser: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0 },
   },
   {
     timestamps: true,

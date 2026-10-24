@@ -10,7 +10,7 @@ import { startMeetingImportWorker } from './queues/meetingImportQueue.js';
 async function bootstrap() {
   try {
     // 1. Connect to MongoDB
-    logger.info({ uri: config.mongoUri }, 'Connecting to MongoDB...');
+    logger.info('Connecting to MongoDB...');
     await connectDatabase();
     logger.info('Connected to MongoDB successfully');
 
@@ -30,8 +30,10 @@ async function bootstrap() {
     // 3. Create and start Express server
     const app = createApp();
     const server = app.listen(config.port, config.host, () => {
-      logger.info(`VoxMind Backend running at http://${config.host}:${config.port}`);
+      logger.info(`MeetingBrief Backend running at http://${config.host}:${config.port}`);
     });
+    server.requestTimeout = 120000;
+    server.headersTimeout = 30000;
 
     // 4. Graceful shutdown handler
     const gracefulShutdown = async (signal: string) => {
@@ -49,7 +51,7 @@ async function bootstrap() {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error) {
-    logger.error({ error }, 'Failed to start server');
+    logger.error({ errorType: error instanceof Error ? error.name : 'UnknownError' }, 'Failed to start server. Check database and service configuration.');
     process.exit(1);
   }
 }

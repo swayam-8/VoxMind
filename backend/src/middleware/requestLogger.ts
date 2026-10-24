@@ -3,6 +3,7 @@ import { pinoHttp } from 'pino-http';
 import { config } from '../config/index.js';
 
 export const logger = pino({
+  redact: { paths: ['password', 'passwordHash', 'token', 'accessToken', 'access_token', 'authorization', 'cookie', 'secret', 'req.headers.authorization', 'req.headers.cookie'], censor: '[REDACTED]' },
   level: config.nodeEnv === 'production' ? 'info' : 'debug',
   transport:
     config.nodeEnv !== 'production'

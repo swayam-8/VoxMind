@@ -7,8 +7,9 @@ const titles: Record<string, string> = {
   overview: "Overview",
   recordings: "Recordings",
   collections: "Collections",
-  ask: "Ask VoxMind",
+  ask: "Ask MeetingBrief",
   api: "Integrations",
+  docs: "Guides & API",
   settings: "Settings",
 };
 export function AppShell() {
@@ -24,7 +25,7 @@ export function AppShell() {
   }, []);
   const title = titles[location.pathname.split("/")[2]] || "Workspace";
   useEffect(() => {
-    document.title = `${title} — VoxMind`;
+    document.title = `${title} — MeetingBrief`;
     window.scrollTo(0, 0);
   }, [location.pathname, title]);
   return (
@@ -41,7 +42,7 @@ export function AppShell() {
           </div>
         </main>
         <footer className="workspace-footer">
-          <span>VoxMind — A little more clarity.</span>
+          <span>MeetingBrief — A little more clarity.</span>
           <span>YOUR VOICE. YOUR WORKSPACE.</span>
         </footer>
       </div>

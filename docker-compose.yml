@@ -1,10 +1,13 @@
+# Stable project name preserves existing volumes after the public rename.
+name: voxmind
+
 services:
   # Primary Document Database
   mongo:
     image: mongo:7.0
     container_name: voxmind-mongo
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -19,7 +22,7 @@ services:
     image: redis:7-alpine
     container_name: voxmind-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -68,6 +71,8 @@ services:
       dockerfile: Dockerfile
     container_name: voxmind-ai-service
     environment:
+      - AI_INTERNAL_SECRET=${AI_INTERNAL_SECRET:?Run npm start to generate the internal service key}
+      - AUDIO_STORAGE_ROOT=/app/storage/uploads
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
       - WHISPER_MODEL=${WHISPER_MODEL:-base}
@@ -78,9 +83,9 @@ services:
       - NO_PROXY=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
       - no_proxy=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
     ports:
-      - "${AI_SERVICE_PORT:-8001}:8000"
+      - "127.0.0.1:${AI_SERVICE_PORT:-8001}:8000"
     volumes:
-      - storage_data:/app/storage
+      - storage_data:/app/storage:ro
       - model_cache:/root/.cache/huggingface
     depends_on:
       ollama:
@@ -106,10 +111,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET=${JWT_SECRET:?Run npm start to generate your local configuration}
       - AI_SERVICE_URL=http://ai_service:8000
+      - AI_INTERNAL_SECRET=${AI_INTERNAL_SECRET:?Run npm start to generate the internal service key}
+      - TRUST_PROXY=1
       - NO_PROXY=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
       - no_proxy=localhost,127.0.0.1,::1,mongo,redis,backend,ai_service,ollama,${NO_PROXY:-}
       - UPLOAD_DIR=/app/storage/uploads
-      - CORS_ORIGIN=http://localhost:5173
+      - CORS_ORIGIN=${FRONTEND_URL:-http://localhost:5173}
       - INTEGRATION_ENCRYPTION_KEY=${INTEGRATION_ENCRYPTION_KEY:-}
       - INTEGRATIONS_API_BASE_URL=${INTEGRATIONS_API_BASE_URL:-http://localhost:5000}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
@@ -117,10 +124,13 @@ services:
       - ZOOM_CLIENT_SECRET=${ZOOM_CLIENT_SECRET:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_AUTH_CLIENT_ID=${GOOGLE_AUTH_CLIENT_ID:-}
+      - GOOGLE_AUTH_CLIENT_SECRET=${GOOGLE_AUTH_CLIENT_SECRET:-}
+      - AUTH_API_BASE_URL=${AUTH_API_BASE_URL:-http://localhost:5000}
       - WEBEX_CLIENT_ID=${WEBEX_CLIENT_ID:-}
       - WEBEX_CLIENT_SECRET=${WEBEX_CLIENT_SECRET:-}
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     volumes:
       - storage_data:/app/storage
     depends_on:
@@ -144,7 +154,7 @@ services:
       dockerfile: Dockerfile
     container_name: voxmind-frontend
     ports:
-      - "5173:80"
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:5173:80"
     depends_on:
       backend:
         condition: service_healthy

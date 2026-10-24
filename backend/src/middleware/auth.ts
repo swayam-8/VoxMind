@@ -4,7 +4,6 @@ import { HydratedDocument } from 'mongoose';
 import { TokenService } from '../services/tokenService.js';
 import { User, IUser } from '../database/models/User.js';
 import { WorkspaceMembership } from '../database/models/WorkspaceMembership.js';
-import { Workspace } from '../database/models/Workspace.js';
 import { ApiKey, IApiKey } from '../database/models/ApiKey.js';
 import { AppError } from './errorHandler.js';
 
@@ -20,14 +19,11 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
     let token: string | undefined;
     const authHeader = req.headers.authorization;
     const apiKeyHeader = req.headers['x-api-key'] as string | undefined;
-    const queryToken = req.query.token as string | undefined;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7).trim();
     } else if (apiKeyHeader) {
       token = apiKeyHeader.trim();
-    } else if (queryToken) {
-      token = queryToken.trim();
     }
 
     if (!token) {
@@ -35,7 +31,7 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
     }
 
     // Check if token is an API key (starts with "vm_live_")
-    if (token.startsWith('vm_live_')) {
+    if (token.startsWith('vm_live_') || token.startsWith('mb_live_')) {
       const keyHash = crypto.createHash('sha256').update(token).digest('hex');
       const apiKey = await ApiKey.findOne({ keyHash, isRevoked: false });
 
@@ -55,10 +51,20 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
         throw new AppError('User not found or disabled', 401, 'USER_DISABLED');
       }
 
+      const membership = await WorkspaceMembership.findOne({ workspaceId: apiKey.workspaceId, userId: user._id });
+      if (!membership) throw new AppError('Workspace access has been removed', 403, 'WORKSPACE_FORBIDDEN');
+
       req.user = user;
       req.workspaceId = apiKey.workspaceId;
       req.apiKey = apiKey;
-      req.userRole = 'admin'; // API keys act with admin workspace permissions
+      req.userRole = membership.role;
+      const requestPath = req.originalUrl.split('?')[0].replace(/\/+$/, '');
+      const readRequest = ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+        (req.method === 'POST' && (/^\/api\/v1\/recordings\/[^/]+\/(ask|audio-ticket)$/.test(requestPath) ||
+          ['/api/v1/knowledge/ask', '/api/v1/search'].includes(requestPath)));
+      if ((apiKey.accessLevel || 'read') === 'read' && !readRequest) {
+        throw new AppError('This key has read-only access. Create a read and write key for uploads or changes.', 403, 'API_KEY_READ_ONLY');
+      }
       return next();
     }
 
@@ -69,45 +75,18 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
       if (!user || !user.isActive) {
         throw new AppError('User not found or disabled', 401, 'USER_DISABLED');
       }
+      if ((decoded.tokenVersion ?? 0) !== (user.tokenVersion ?? 0)) {
+        throw new AppError('Session expired. Sign in again.', 401, 'INVALID_TOKEN');
+      }
 
       req.user = user;
 
-      // Determine workspace
-      let workspaceId = decoded.workspaceId;
-      if (!workspaceId) {
-        // Find default membership or workspace
-        const membership = await WorkspaceMembership.findOne({ userId: user._id });
-        if (membership) {
-          workspaceId = membership.workspaceId;
-          req.userRole = membership.role;
-        } else {
-          // Find or create personal workspace
-          let personalWorkspace = await Workspace.findOne({ createdBy: user._id });
-          if (!personalWorkspace) {
-            personalWorkspace = await Workspace.create({
-              name: `${user.fullName || user.email}'s Workspace`,
-              slug: `ws-${user._id.substring(0, 8)}`,
-              createdBy: user._id,
-              isPersonal: true,
-            });
-            await WorkspaceMembership.create({
-              workspaceId: personalWorkspace._id,
-              userId: user._id,
-              role: 'owner',
-            });
-          }
-          workspaceId = personalWorkspace._id;
-          req.userRole = 'owner';
-        }
-      } else {
-        const membership = await WorkspaceMembership.findOne({
-          workspaceId,
-          userId: user._id,
-        });
-        req.userRole = membership?.role || 'viewer';
-      }
-
-      req.workspaceId = workspaceId;
+      const membership = await WorkspaceMembership.findOne({
+        userId: user._id, ...(decoded.workspaceId ? { workspaceId: decoded.workspaceId } : {}),
+      });
+      if (!membership) throw new AppError('Workspace access has been removed', 403, 'WORKSPACE_FORBIDDEN');
+      req.userRole = membership.role;
+      req.workspaceId = membership.workspaceId;
       return next();
     } catch (err: any) {
       if (err instanceof AppError) throw err;
@@ -123,12 +102,21 @@ export function requireRole(allowedRoles: string[]) {
     if (!req.user) {
       return next(new AppError('Authentication required', 401, 'UNAUTHORIZED'));
     }
-    if (req.user.isSuperuser) {
-      return next();
-    }
     if (!req.userRole || !allowedRoles.includes(req.userRole)) {
       return next(new AppError('Insufficient permissions for this workspace resource', 403, 'FORBIDDEN'));
     }
     next();
   };
+}
+
+/** Personal credentials, billing and OAuth connections require an interactive session. */
+export function requireSession(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+  if (req.apiKey) return next(new AppError('Sign in to manage account credentials', 403, 'SESSION_REQUIRED'));
+  next();
+}
+
+/** Deployment-wide diagnostics are reserved for the service operator. */
+export function requireOperator(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+  if (!req.user?.isSuperuser) return next(new AppError('Service operator access required', 403, 'OPERATOR_REQUIRED'));
+  next();
 }

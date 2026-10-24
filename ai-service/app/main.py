@@ -1,4 +1,4 @@
-"""VoxMind Python AI Microservice (FastAPI).
+"""MeetingBrief Python AI Microservice (FastAPI).
 
 Provides dedicated local machine learning inference for:
 - faster-whisper speech transcription
@@ -10,9 +10,8 @@ Provides dedicated local machine learning inference for:
 import logging
 import importlib.util
 import shutil
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from app.security import protect_request, audio_path
 from app import config
 from app.schemas import (
     TranscribeRequest,
@@ -29,7 +28,6 @@ from app.schemas import (
     RAGResponse,
     HealthResponse,
 )
-from app.services.audio_service import AudioService, AudioValidationError
 from app.services.transcription_service import TranscriptionService, TranscriptionServiceError
 from app.services.ollama_service import OllamaService, OllamaServiceError, OllamaValidationError
 from app.services.embedding_service import EmbeddingService
@@ -40,20 +38,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("voxmind.ai_service")
 
 app = FastAPI(
-    title="VoxMind AI Microservice",
+    title="MeetingBrief AI Microservice",
     description="Internal Python AI inference service for transcription, embeddings, and Ollama LLM.",
     version="1.0.0",
+    docs_url=None, redoc_url=None, openapi_url=None,
 )
 
-# Internal CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+app.middleware("http")(protect_request)
 
 @app.get("/health", response_model=HealthResponse)
 def health_check():
@@ -96,7 +87,7 @@ def transcribe_audio(payload: TranscribeRequest):
     """Execute speech-to-text inference on a local audio file."""
     try:
         result = TranscriptionService.transcribe(
-            audio_path=payload.audio_path,
+            audio_path=audio_path(payload.audio_path),
             language=payload.language,
         )
         return TranscribeResponse(
@@ -106,12 +97,14 @@ def transcribe_audio(payload: TranscribeRequest):
             duration=result["duration"],
             segments=result["segments"],
         )
+    except HTTPException:
+        raise
     except TranscriptionServiceError as exc:
         logger.error("Transcription error: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
     except Exception as exc:
         logger.exception("Unexpected transcription error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Internal transcription failure: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Transcription could not finish")
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
@@ -136,7 +129,7 @@ def analyze_transcript(payload: AnalyzeRequest):
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         logger.exception("Unexpected analysis error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Internal analysis failure: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Analysis could not finish")
 
 
 @app.post("/ask", response_model=AskTranscriptResponse)
@@ -159,7 +152,7 @@ def ask_transcript(payload: AskTranscriptRequest):
     except OllamaServiceError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Internal QA failure: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Question answering could not finish")
 
 
 @app.post("/embed", response_model=EmbedResponse)
@@ -175,7 +168,7 @@ def embed_passages(payload: EmbedRequest):
         )
     except Exception as exc:
         logger.exception("Embedding error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Vector embedding failure: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Embedding could not finish")
 
 
 @app.post("/chunk", response_model=ChunkResponse)
@@ -190,7 +183,7 @@ def chunk_segments(payload: ChunkRequest):
         return ChunkResponse(success=True, chunks=chunks)
     except Exception as exc:
         logger.exception("Chunking error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Chunking failure: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Chunking could not finish")
 
 
 @app.post("/rag", response_model=RAGResponse)
@@ -227,4 +220,4 @@ def rag_synthesis(payload: RAGRequest):
         )
     except Exception as exc:
         logger.exception("RAG error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"RAG failure: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Question answering could not finish")

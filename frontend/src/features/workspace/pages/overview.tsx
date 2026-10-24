@@ -246,7 +246,7 @@ export function OverviewPage() {
           <div className="panel-footnote">
             <ShieldCheck size={14} />
             <span>
-              A home for your conversations. Powered by local intelligence.
+              A home for your conversations. A clearer next step.
             </span>
           </div>
         </section>
@@ -267,7 +267,7 @@ export function OverviewPage() {
             exact moment it was said.
           </p>
           <Link to="/app/ask" className="insight-cta">
-            Ask VoxMind <ArrowUpRight size={18} />
+            Ask MeetingBrief <ArrowUpRight size={18} />
           </Link>
           <div className="insight-example">
             <span>TRY ASKING</span>

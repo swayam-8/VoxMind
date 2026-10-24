@@ -1,8 +1,12 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { apiClient } from "@/lib/api-client";
 import { AppShell } from "@/components/layout/app-shell";
 import { Loader2 } from "lucide-react";
 
+const LandingPage = lazy(() => import("@/features/marketing/pages/landing").then((m) => ({ default: m.LandingPage })));
+const PrivacyPage = lazy(() => import("@/features/marketing/pages/privacy").then((m) => ({ default: m.PrivacyPage })));
+const GoogleCompletePage = lazy(() => import("@/features/auth/pages/google-complete").then((m) => ({ default: m.GoogleCompletePage })));
 const LoginPage = lazy(() =>
   import("@/features/auth/pages/login").then((m) => ({ default: m.LoginPage })),
 );
@@ -41,6 +45,7 @@ const IntegrationsPage = lazy(() =>
     default: m.IntegrationsPage,
   })),
 );
+const DocumentationPage = lazy(() => import("@/features/integrations/pages/documentation").then((m) => ({ default: m.DocumentationPage })));
 const SettingsPage = lazy(() =>
   import("@/features/settings/pages/settings").then((m) => ({
     default: m.SettingsPage,
@@ -51,6 +56,8 @@ const NotFoundPage = lazy(() =>
     default: m.NotFoundPage,
   })),
 );
+
+function ProtectedApp() { return apiClient.isAuthenticated() ? <AppShell /> : <Navigate to="/login" replace />; }
 
 function Loading() {
   return (
@@ -70,12 +77,15 @@ function LazyPage() {
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/app/overview" replace />} />
       <Route element={<LazyPage />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/auth/google/complete" element={<GoogleCompletePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
-      <Route element={<AppShell />}>
+      <Route element={<AppShell />}><Route element={<LazyPage />}><Route path="/app/docs" element={<DocumentationPage />} /><Route path="/docs" element={<Navigate to="/app/docs" replace />} /></Route></Route>
+      <Route element={<ProtectedApp />}>
         <Route element={<LazyPage />}>
           <Route
             path="/app"

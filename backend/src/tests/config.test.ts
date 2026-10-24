@@ -26,3 +26,20 @@ describe('service addresses', () => {
     expect(config.aiServiceUrl).toBe('http://127.0.0.1:8001');
   });
 });
+
+
+describe('production security configuration', () => {
+  it('rejects public JWT placeholders and wildcard browser origins', async () => {
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('AI_INTERNAL_SECRET', 'b'.repeat(64));
+    vi.stubEnv('JWT_SECRET', 'your-secure-random-32-plus-character-secret-key-here');
+    await expect(import('../config/index.js')).rejects.toThrow('JWT_SECRET');
+    vi.resetModules(); vi.stubEnv('JWT_SECRET', 'a'.repeat(64)); vi.stubEnv('CORS_ORIGIN', '*');
+    await expect(import('../config/index.js')).rejects.toThrow('CORS_ORIGIN');
+  });
+  it('requires a separate internal AI credential and validates proxy configuration', async () => {
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('JWT_SECRET', 'a'.repeat(64)); vi.stubEnv('AI_INTERNAL_SECRET', '');
+    await expect(import('../config/index.js')).rejects.toThrow('AI_INTERNAL_SECRET');
+    vi.resetModules(); vi.stubEnv('AI_INTERNAL_SECRET', 'b'.repeat(64)); vi.stubEnv('CORS_ORIGIN', 'https://meetingbrief.example'); vi.stubEnv('TRUST_PROXY', 'true');
+    await expect(import('../config/index.js')).rejects.toThrow('TRUST_PROXY');
+  });
+});

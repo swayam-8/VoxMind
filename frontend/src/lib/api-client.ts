@@ -1,5 +1,5 @@
 /**
- * Standardized Typed API Client for VoxMind REST API (/api/v1)
+ * Standardized Typed API Client for MeetingBrief REST API (/api/v1)
  */
 
 export interface ApiResponse<T = unknown> {
@@ -144,14 +144,6 @@ export interface ApiKnowledgeAskResult {
   error?: string
 }
 
-export interface ApiIndexStatus {
-  recording_id: string
-  index_status: "pending" | "indexing" | "completed" | "failed"
-  indexed_at: string | null
-  chunk_count: number
-  error_message: string | null
-}
-
 export interface ApiCollection {
   id: string
   workspace_id: string
@@ -170,6 +162,7 @@ export interface ApiApiKey {
   user_id: string
   name: string
   key_prefix: string
+  access_level?: "read" | "write"
   last_used_at?: string | null
   expires_at?: string | null
   is_revoked: boolean
@@ -179,16 +172,11 @@ export interface ApiApiKey {
 
 export interface ApiUsageSummary {
   total_requests: number
-  total_audio_seconds: number
-  total_audio_hours: number
+  total_processing_seconds: number
+  total_processing_hours: number
   prompt_tokens: number
   completion_tokens: number
   total_tokens: number
-  quota: {
-    requests_limit: number
-    audio_hours_limit: number
-    tokens_limit: number
-  }
   by_resource_type: Record<string, { count: number; tokens: number; duration_seconds: number }>
   by_model: Record<string, { count: number; tokens: number }>
   recent_records: Array<{
@@ -207,23 +195,7 @@ export interface ApiUsageSummary {
   }>
 }
 
-export interface ApiDiagnostics {
-  status: "healthy" | "degraded" | "unhealthy"
-  timestamp: string
-  environment: string
-  services: {
-    database: { status: string; latency_ms?: number; message?: string }
-    redis: { status: string; latency_ms?: number; message?: string }
-    celery: { status: string; latency_ms?: number; active_workers?: number; worker_names?: string[]; message?: string }
-    ollama: { status: string; latency_ms?: number; base_url?: string; configured_model?: string; model_available?: boolean; downloaded_models?: string[]; message?: string }
-    whisper: { status: string; whisper_installed?: boolean; ffmpeg_installed?: boolean; model?: string; device?: string; compute_type?: string; message?: string }
-    embedding: { status: string; model?: string; dimension?: number; device?: string; message?: string }
-    vector_storage: { status: string; dialect?: string; pgvector_extension?: boolean; hnsw_index_active?: boolean; message?: string }
-    storage: { status: string; path?: string; total_gb?: number; used_gb?: number; free_gb?: number; message?: string }
-  }
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1"
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1"
 
 class ApiClient {
   private getAuthHeader(): Record<string, string> {
@@ -277,6 +249,12 @@ class ApiClient {
         0
       )
     }
+  }
+
+  async getApiReference(): Promise<{ paths: Record<string, Record<string, { summary: string; description: string }>> }> {
+    const response = await fetch(`${API_BASE}/openapi.json`)
+    if (!response.ok) throw new Error("API reference is unavailable")
+    return response.json()
   }
 
   // REST generic helpers
@@ -386,7 +364,9 @@ class ApiClient {
       workspace: { id: string; name: string; slug: string; role: string } | null
     }>
   > {
-    return this.patch("/auth/me", data)
+    const result = await this.patch<{ user: { id: string; email: string; fullName: string; isActive: boolean }; workspace: { id: string; name: string; slug: string; role: string } | null; access_token?: string }>("/auth/me", data)
+    if (result.data.access_token) localStorage.setItem("voxmind_access_token", result.data.access_token)
+    return result
   }
 
   logout(): void {
@@ -483,7 +463,7 @@ class ApiClient {
 
   async retryRecording(recordingId: string): Promise<ApiResponse<{
     recording: ApiRecording
-    job: { id: string; status: string; celery_task_id?: string }
+    job: { id: string; status: string; transcription_job_id?: string }
   }>> {
     return this.post(`/recordings/${recordingId}/retry`)
   }
@@ -491,7 +471,7 @@ class ApiClient {
   async getJob(jobId: string): Promise<ApiResponse<{
     id: string
     recording_id: string
-    celery_task_id?: string
+    transcription_job_id?: string
     status: string
     engine: string
     model_name: string
@@ -568,14 +548,12 @@ class ApiClient {
     return this.post("/knowledge/ask", { question, ...options })
   }
 
-  async getIndexStatus(recordingId: string): Promise<ApiResponse<ApiIndexStatus>> {
-    return this.get(`/recordings/${recordingId}/index-status`)
+  async getAudioTicket(recordingId: string): Promise<ApiResponse<{ ticket: string; expires_in: number }>> {
+    return this.post(`/recordings/${recordingId}/audio-ticket`)
   }
 
-  async reindexRecording(
-    recordingId: string
-  ): Promise<ApiResponse<{ recording_id: string; index_status: string }>> {
-    return this.post(`/recordings/${recordingId}/reindex`)
+  audioUrl(recordingId: string, ticket: string): string {
+    return `${API_BASE}/recordings/${encodeURIComponent(recordingId)}/audio?ticket=${encodeURIComponent(ticket)}`
   }
 
   async deleteRecording(id: string): Promise<ApiResponse<{ id: string }>> {
@@ -639,6 +617,7 @@ class ApiClient {
   async createApiKey(data: {
     name: string
     expires_days?: number
+    access_level?: "read" | "write"
   }): Promise<ApiResponse<ApiApiKey>> {
     return this.post<ApiApiKey>("/api-keys", data)
   }
@@ -650,11 +629,6 @@ class ApiClient {
   // Phase 7: AI Token & Resource Usage
   async getUsage(): Promise<ApiResponse<ApiUsageSummary>> {
     return this.get<ApiUsageSummary>("/usage")
-  }
-
-  // Phase 7: System Diagnostics
-  async getDiagnostics(): Promise<ApiResponse<ApiDiagnostics>> {
-    return this.get<ApiDiagnostics>("/diagnostics")
   }
 
   async getHealth(): Promise<ApiResponse<{ status: string; service: string; version: string }>> {

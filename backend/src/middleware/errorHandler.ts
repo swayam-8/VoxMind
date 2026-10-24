@@ -18,6 +18,7 @@ export class AppError extends Error {
 }
 
 export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
+  if (res.headersSent) return _next(err);
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,
@@ -31,7 +32,7 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
 
   if (err instanceof ZodError) {
     const errorMap: Record<string, string[]> = {};
-    for (const e of err.errors) {
+    for (const e of err.issues) {
       const field = e.path.join('.') || 'body';
       if (!errorMap[field]) errorMap[field] = [];
       errorMap[field].push(e.message);
@@ -58,10 +59,15 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
     });
   }
 
-  logger.error({ err, url: req.path, method: req.method }, 'Unhandled Exception');
+  logger.error({ errorType: err.name, url: req.path, method: req.method }, 'Unhandled Exception');
 
-  const statusCode = err.status || err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  // Never expose database queries, paths, stack traces or parser payloads.
+  const statusCode = err.type === 'entity.too.large' ? 413 :
+    err.type === 'entity.parse.failed' ? 400 : err.type === 'encoding.unsupported' ? 415 :
+    err.code === 11000 ? 409 : 500;
+  const message = statusCode === 413 ? 'Request body is too large' :
+    statusCode === 400 ? 'Invalid JSON request body' : statusCode === 415 ? 'Unsupported content encoding' :
+    statusCode === 409 ? 'This resource already exists' : 'Internal server error';
 
   return res.status(statusCode).json({
     success: false,

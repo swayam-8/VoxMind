@@ -28,7 +28,7 @@ export function ActivityIndicator({ kind = "ai", title, description, className }
         <span className="activity-core"><Icon /></span>
       </div>
       <div className="activity-copy">
-        <span className="activity-eyebrow">{kind === "audio" ? "Audio processing" : "VoxMind intelligence"}</span>
+        <span className="activity-eyebrow">{kind === "audio" ? "Audio processing" : "MeetingBrief intelligence"}</span>
         <strong>{title}</strong>
         <p>{description}</p>
         <span className="activity-dots" aria-hidden="true"><i /><i /><i /></span>

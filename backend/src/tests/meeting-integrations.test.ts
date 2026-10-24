@@ -242,7 +242,6 @@ describe("Meeting account connections and recording imports", () => {
     ).toMatchObject({
       configured: false,
       connected: false,
-      missingVariables: ["ZOOM_CLIENT_SECRET"],
     });
     expect(
       (
@@ -251,6 +250,8 @@ describe("Meeting account connections and recording imports", () => {
           .set("Authorization", `Bearer ${token}`)
       ).status,
     ).toBe(503);
+    expect(status.body.data[0]).not.toHaveProperty("missingVariables");
+    expect(status.body.data[0]).not.toHaveProperty("callbackUrl");
     vi.stubEnv("ZOOM_CLIENT_SECRET", "fixture-client-secret");
   });
 

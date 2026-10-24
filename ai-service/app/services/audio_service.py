@@ -3,6 +3,7 @@
 import os
 from typing import Tuple
 import av
+from app import config
 
 
 class AudioValidationError(Exception):
@@ -72,7 +73,7 @@ class AudioService:
             raise AudioValidationError("Audio file is empty (0 bytes).")
 
         try:
-            with av.open(file_path, mode="r") as container:
+            with av.open(file_path, mode="r", options={"protocol_whitelist": "file,pipe", "format_whitelist": config.AUDIO_FORMAT_WHITELIST}) as container:
                 audio_streams = [s for s in container.streams if s.type == "audio"]
                 if not audio_streams:
                     raise AudioValidationError("Container does not contain any valid audio stream.")

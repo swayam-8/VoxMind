@@ -5,6 +5,7 @@ import { TranscriptChunk } from '../../database/models/TranscriptChunk.js';
 import { TranscriptSegment } from '../../database/models/TranscriptSegment.js';
 import { ApiUsageRecord } from '../../database/models/ApiUsageRecord.js';
 import { AiServiceClient } from '../../services/aiServiceClient.js';
+import { escapeSearch } from '../../utils/search.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -31,8 +32,8 @@ export class SearchController {
       const recordingIds = req.body?.recording_ids || req.body?.recordingIds;
       const collectionId = (req.body?.collection_id || req.body?.collectionId || req.query.collection_id || req.query.collectionId) as string | undefined;
       const limit = Number(req.body?.limit || req.query.limit) || 10;
-      const minScore = Number(req.body?.min_score || req.query.min_score) || 0.2;
-      const mode = (req.body?.mode || 'hybrid') as 'hybrid' | 'semantic' | 'keyword';
+      const minScore = Number(req.body?.min_score ?? req.query.min_score ?? 0.2);
+      const mode = (req.body?.mode || req.query.mode || 'hybrid') as 'hybrid' | 'semantic' | 'keyword';
 
       if (!query.trim()) {
         const emptyPayload = { query: '', mode, total: 0, results: [] };
@@ -63,7 +64,7 @@ export class SearchController {
       const chunks = await TranscriptChunk.find({
         workspaceId,
         recordingId: { $in: targetRecordingIds },
-      }).lean();
+      }).limit(10000).lean();
 
       let rankedResults: Array<{
         chunk_id: string;
@@ -115,7 +116,7 @@ export class SearchController {
       if (rankedResults.length < limit) {
         const keywordMatches = await TranscriptSegment.find({
           recordingId: { $in: targetRecordingIds },
-          text: { $regex: query, $options: 'i' },
+          text: { $regex: escapeSearch(query), $options: 'i' },
         })
           .limit(limit - rankedResults.length)
           .lean();
@@ -196,7 +197,7 @@ export class SearchController {
       let chunks = await TranscriptChunk.find({
         workspaceId,
         recordingId: { $in: targetRecordingIds },
-      }).lean();
+      }).limit(10000).lean();
 
       if (chunks.length === 0) {
         const segments = await TranscriptSegment.find({
@@ -220,7 +221,7 @@ export class SearchController {
         })) as any;
       }
 
-      const preparedChunks = chunks.map((c) => ({
+      const preparedChunks = chunks.slice(0, topK).map((c) => ({
         recording_id: c.recordingId,
         recording_title: recordingMap.get(c.recordingId) || 'Untitled Recording',
         start_time: c.startTime,

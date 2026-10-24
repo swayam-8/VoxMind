@@ -150,7 +150,7 @@
 }
 @container recording (max-width: 420px) {
   .recording-detail-page .detail-panel { padding: 16px; }
-  .recording-detail-page .recording-tools { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .recording-detail-page .recording-tools { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .recording-detail-page .recording-tools [data-slot="button"] { padding-inline: 8px; font-size: 12px; }
   .recording-detail-page .recording-tools [data-slot="button"] > svg { width: 18px; height: 18px; }
   .insight-metrics > div { padding-inline: 10px; }

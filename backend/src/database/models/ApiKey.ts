@@ -9,6 +9,7 @@ export interface IApiKey {
   keyPrefix: string;
   keyHash: string;
   isRevoked: boolean;
+  accessLevel: 'read' | 'write';
   lastUsedAt: Date | null;
   expiresAt: Date | null;
   createdAt: Date;
@@ -23,6 +24,7 @@ const ApiKeySchema = new Schema<IApiKey>(
     name: { type: String, required: true, trim: true },
     keyPrefix: { type: String, required: true },
     keyHash: { type: String, required: true, unique: true, index: true },
+    accessLevel: { type: String, enum: ['read', 'write'], default: 'read' },
     isRevoked: { type: Boolean, default: false },
     lastUsedAt: { type: Date, default: null },
     expiresAt: { type: Date, default: null },

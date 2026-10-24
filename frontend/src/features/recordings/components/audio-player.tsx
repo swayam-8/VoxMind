@@ -74,7 +74,7 @@ export function AudioPlayer({
     } else {
       audio.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, audioSrc]);
 
   // Sync seek events to audio element
   useEffect(() => {
@@ -147,6 +147,9 @@ export function AudioPlayer({
           ref={audioRef}
           src={audioSrc}
           preload="metadata"
+          onLoadedMetadata={() => {
+            if (audioRef.current && currentTime > 0) audioRef.current.currentTime = currentTime;
+          }}
           onTimeUpdate={() => {
             if (audioRef.current) {
               onTimeUpdate?.(audioRef.current.currentTime);

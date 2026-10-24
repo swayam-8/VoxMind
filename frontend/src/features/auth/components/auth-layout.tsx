@@ -11,7 +11,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <Link to="/" className="brand-lockup">
           <AudioWaveform className="text-[#8faaff]" size={30} />
           <span>
-            voxmind<span className="brand-period">.</span>
+            meetingbrief<span className="brand-period">.</span>
           </span>
         </Link>
         <div className="auth-story-body">
@@ -28,7 +28,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <Waveform />
         </div>
         <p className="auth-story-footer">
-          <ShieldCheck size={15} /> Built for local voice intelligence.
+          <ShieldCheck size={15} /> A clearer next step after every meeting.
         </p>
       </aside>
       <section className="auth-form-side">

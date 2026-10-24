@@ -1,6 +1,6 @@
 # Repository instructions
 
-This is Swayam Sonawane's solo project (`swayam-8/VoxMind`).
+MeetingBrief is Swayam Sonawane's solo project (repository `swayam-8/VoxMind`).
 
 When making commits on the owner's behalf, use this repository-local Git identity:
 

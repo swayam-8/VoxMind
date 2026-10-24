@@ -26,6 +26,8 @@ test('first start generates private, stable secrets without modifying the templa
   assert.match(first.JWT_SECRET, /^[a-f0-9]{64}$/);
   assert.match(first.INTEGRATION_ENCRYPTION_KEY, /^[a-f0-9]{64}$/);
   assert.notEqual(first.JWT_SECRET, first.INTEGRATION_ENCRYPTION_KEY);
+  assert.match(first.AI_INTERNAL_SECRET, /^[a-f0-9]{64}$/);
+  assert.notEqual(first.AI_INTERNAL_SECRET, first.JWT_SECRET);
   prepareEnvironment(root);
   assert.deepEqual(readEnvironment(root), first);
   assert.equal(fs.readFileSync(path.join(root, '.env.example'), 'utf8'), template);
@@ -36,7 +38,7 @@ test('first start generates private, stable secrets without modifying the templa
 
 test('existing root credentials win and unrelated settings remain intact', (t) => {
   const root = fixture(t);
-  const existing = '# Keep my settings\nJWT_SECRET=existing-jwt-secret\nINTEGRATION_ENCRYPTION_KEY=existing-key\nZOOM_CLIENT_SECRET=keep-me\nCUSTOM_VALUE=42\n';
+  const existing = '# Keep my settings\nAI_INTERNAL_SECRET=existing-internal-secret\nJWT_SECRET=existing-jwt-secret\nINTEGRATION_ENCRYPTION_KEY=existing-key\nZOOM_CLIENT_SECRET=keep-me\nCUSTOM_VALUE=42\n';
   fs.writeFileSync(path.join(root, '.env'), existing);
   fs.writeFileSync(path.join(root, 'backend', '.env'), 'INTEGRATION_ENCRYPTION_KEY=other-key\nZOOM_CLIENT_SECRET=other-secret\n');
   prepareEnvironment(root);

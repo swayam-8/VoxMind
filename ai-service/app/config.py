@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env")
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
@@ -31,4 +33,9 @@ RETRIEVAL_MIN_SCORE = float(os.getenv("RETRIEVAL_MIN_SCORE", "0.35"))
 
 AI_SERVICE_PORT = int(os.getenv("AI_SERVICE_PORT", "8000"))
 AI_SERVICE_HOST = os.getenv("AI_SERVICE_HOST", "0.0.0.0")
-AI_INTERNAL_SECRET = os.getenv("AI_INTERNAL_SECRET", "voxmind-internal-ai-service-secret")
+AI_INTERNAL_SECRET = os.getenv("AI_INTERNAL_SECRET", "")
+AI_MAX_REQUEST_BYTES = 8 * 1024 * 1024
+AUDIO_STORAGE_ROOT = os.getenv("AUDIO_STORAGE_ROOT", os.getenv("UPLOAD_DIR", str(BASE_DIR.parent / "backend" / "uploads")))
+
+# Decode media containers only; never playlists or arbitrary input protocols.
+AUDIO_FORMAT_WHITELIST = "wav,mp3,mov,mp4,m4a,flac,ogg,matroska,webm,aac,asf"

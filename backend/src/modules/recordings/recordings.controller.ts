@@ -16,6 +16,11 @@ import { AppError } from '../../middleware/errorHandler.js';
 import { getAnalysisState } from '../../services/analysisState.js';
 import { RecordingQuestion } from '../../database/models/RecordingQuestion.js';
 
+import { issueAudioTicket } from '../../middleware/audioAuth.js';
+import { recordingPath } from '../../services/storage.js';
+import { escapeSearch } from '../../utils/search.js';
+import { uploadRecordingSchema } from './recordings.schema.js';
+
 export class RecordingsController {
   static async getQuestions(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
@@ -52,7 +57,7 @@ export class RecordingsController {
         filter.collectionId = collectionId;
       }
       if (search && search.trim()) {
-        filter.title = { $regex: search.trim(), $options: 'i' };
+        filter.title = { $regex: escapeSearch(search.trim()), $options: 'i' };
       }
 
       const total = await Recording.countDocuments(filter);
@@ -68,7 +73,7 @@ export class RecordingsController {
       const summaryMap = new Map(summaries.map((s) => [s.recordingId, s]));
 
       const collectionIds = recordings.map((r) => r.collectionId).filter(Boolean);
-      const collections = await Collection.find({ _id: { $in: collectionIds } }).lean();
+      const collections = await Collection.find({ _id: { $in: collectionIds }, workspaceId }).lean();
       const collectionMap = new Map(collections.map((c) => [c._id, c]));
 
       const enriched = recordings.map((r) => {
@@ -134,6 +139,7 @@ export class RecordingsController {
   }
 
   static async upload(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    let persisted = false;
     try {
       if (!req.file) {
         throw new AppError('No audio file provided', 400, 'NO_FILE_PROVIDED');
@@ -141,11 +147,15 @@ export class RecordingsController {
 
       const workspaceId = req.workspaceId!;
       const userId = req.user!._id;
+      req.body = uploadRecordingSchema.parse(req.body);
       const title =
         req.body.title ||
         path.basename(req.file.originalname, path.extname(req.file.originalname));
       const collectionId = req.body.collection_id || req.body.collectionId || null;
       const language = req.body.language || null;
+      if (collectionId && !(await Collection.exists({ _id: collectionId, workspaceId }))) {
+        throw new AppError('Collection not found', 404, 'COLLECTION_NOT_FOUND');
+      }
 
       const recording = await Recording.create({
         workspaceId,
@@ -161,6 +171,7 @@ export class RecordingsController {
         indexStatus: 'pending',
       });
 
+      persisted = true;
       // Enqueue BullMQ transcription job
       const job = await audioQueue.add('transcribe-audio', { recordingId: recording._id });
       recording.transcriptionJobId = job.id || null;
@@ -192,6 +203,7 @@ export class RecordingsController {
         ...responsePayload,
       });
     } catch (error) {
+      if (!persisted && req.file) await fs.promises.rm(req.file.path, { force: true }).catch(() => {});
       next(error);
     }
   }
@@ -215,7 +227,7 @@ export class RecordingsController {
 
       let collection = null;
       if (recording.collectionId) {
-        collection = await Collection.findById(recording.collectionId).lean();
+        collection = await Collection.findOne({ _id: recording.collectionId, workspaceId }).lean();
       }
 
       const payload = {
@@ -544,6 +556,7 @@ export class RecordingsController {
       }
       const targetCollection = collection_id !== undefined ? collection_id : collectionId;
       if (targetCollection !== undefined) {
+        if (targetCollection && !(await Collection.exists({ _id: targetCollection, workspaceId }))) throw new AppError('Collection not found', 404, 'COLLECTION_NOT_FOUND');
         recording.collectionId = targetCollection;
       }
 
@@ -581,7 +594,7 @@ export class RecordingsController {
       // Delete file from disk if exists
       if (recording.storagePath && fs.existsSync(recording.storagePath)) {
         try {
-          fs.unlinkSync(recording.storagePath);
+          await fs.promises.unlink(await recordingPath(recording.storagePath));
         } catch (_err) {}
       }
 
@@ -648,52 +661,29 @@ export class RecordingsController {
     }
   }
 
+  static async getAudioTicket(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!(await Recording.exists({ _id: req.params.id, workspaceId: req.workspaceId }))) throw new AppError('Recording not found', 404, 'RECORDING_NOT_FOUND');
+      res.json({ success: true, data: { ticket: issueAudioTicket(req, req.params.id), expires_in: 900 } });
+    } catch (error) { next(error); }
+  }
+
   static async getAudio(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
-      const workspaceId = req.workspaceId!;
-
-      const recording = await Recording.findOne({ _id: id, workspaceId });
-      if (!recording) {
-        throw new AppError('Recording not found', 404, 'RECORDING_NOT_FOUND');
-      }
-
-      if (!fs.existsSync(recording.storagePath)) {
-        throw new AppError('Audio file not found on disk', 404, 'FILE_NOT_FOUND');
-      }
-
-      const stat = fs.statSync(recording.storagePath);
-      const fileSize = stat.size;
-      const range = req.headers.range;
-
-      const mimeType = recording.mimeType || 'audio/mpeg';
-
-      if (range) {
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunksize = end - start + 1;
-        const file = fs.createReadStream(recording.storagePath, { start, end });
-        const head = {
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunksize,
-          'Content-Type': mimeType,
-        };
-        res.writeHead(206, head);
-        file.pipe(res);
-      } else {
-        const head = {
-          'Content-Length': fileSize,
-          'Content-Type': mimeType,
-          'Accept-Ranges': 'bytes',
-        };
-        res.writeHead(200, head);
-        fs.createReadStream(recording.storagePath).pipe(res);
-      }
-    } catch (error) {
-      next(error);
-    }
+      const recording = await Recording.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
+      if (!recording) throw new AppError('Recording not found', 404, 'RECORDING_NOT_FOUND');
+      const file = await recordingPath(recording.storagePath);
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      res.setHeader('Content-Type', recording.mimeType || 'application/octet-stream');
+      res.sendFile(file, { acceptRanges: true, cacheControl: false, lastModified: false }, (error) => {
+        if (error && !res.headersSent) {
+          const status = (error as any).status;
+          if (status === 416) { res.setHeader('Content-Range', `bytes */${recording.fileSizeBytes}`); next(new AppError('Requested range is not available', 416, 'INVALID_RANGE')); }
+          else next(error);
+        }
+      });
+    } catch (error) { next(error); }
   }
 
   static async ask(req: AuthenticatedRequest, res: Response, next: NextFunction) {

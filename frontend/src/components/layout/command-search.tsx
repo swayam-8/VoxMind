@@ -191,7 +191,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="h-5 w-5 text-accent" />
                   <span className="text-text-primary font-medium">
-                    Ask VoxMind (Evidence RAG)
+                    Ask MeetingBrief (Evidence RAG)
                   </span>
                 </div>
                 <ArrowRight className="h-5 w-5 text-text-muted" />

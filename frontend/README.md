@@ -1,14 +1,12 @@
-# VoxMind frontend
+# MeetingBrief frontend
 
 React, TypeScript, Vite, and Tailwind. The interface uses a white, slate, and cobalt palette with an audio waveform signature. Both light and dark themes are supported.
 
-![Updated desktop workspace](docs/workspace-desktop.png)
-
-[View the mobile layout](docs/workspace-mobile.png)
+The public landing page is `/`; login and signup are `/login` and `/register`. Customer API and meeting guides are `/app/docs`.
 
 ## Develop
 
-Use Node.js 22 or newer.
+Use Node.js 22.12 or newer.
 
 ```sh
 npm ci
@@ -26,7 +24,7 @@ npm run preview
 ## Structure
 
 - `src/app/`: application providers and lazy route definitions.
-- `src/features/`: domain pages grouped into auth, workspace, recordings, collections, intelligence, integrations, and settings. Domain-specific components live beside their pages.
+- `src/features/`: domain pages grouped into marketing, auth, workspace, recordings, collections, intelligence, integrations, and settings. Domain-specific components live beside their pages.
 - `src/components/`: shared UI primitives, application layout, and visual brand components.
 - `src/contexts/` and `src/hooks/`: shared state and reusable behavior.
 - `src/lib/`: typed API client and general utilities.

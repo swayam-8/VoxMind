@@ -1,1 +1,1 @@
-"""VoxMind AI Microservice Package."""
+"""MeetingBrief AI Microservice Package."""

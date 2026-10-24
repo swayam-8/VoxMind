@@ -6,6 +6,10 @@ import { WorkspaceMembership } from '../../database/models/WorkspaceMembership.j
 import { TokenService } from '../../services/tokenService.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { AuthenticatedRequest } from '../../middleware/auth.js';
+import { ApiKey } from '../../database/models/ApiKey.js';
+
+// Equalize the password work for unknown and known accounts.
+const dummyPasswordHash = bcrypt.hashSync('voxmind-non-account-password-check', 10);
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
@@ -44,6 +48,7 @@ export class AuthController {
         email: user.email,
         workspaceId: workspace._id,
         isSuperuser: user.isSuperuser,
+        tokenVersion: user.tokenVersion ?? 0,
       });
 
       const payload = {
@@ -79,7 +84,8 @@ export class AuthController {
       const { email, password } = req.body;
 
       const user = await User.findOne({ email: email.toLowerCase().trim() });
-      if (!user) {
+      if (!user || !user.isActive) {
+        await bcrypt.compare(password, dummyPasswordHash);
         throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
       }
 
@@ -88,36 +94,17 @@ export class AuthController {
         throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
       }
 
-      let workspace = await Workspace.findOne({ createdBy: user._id });
-      let role = 'owner';
-
-      if (!workspace) {
-        const membership = await WorkspaceMembership.findOne({ userId: user._id });
-        if (membership) {
-          workspace = await Workspace.findById(membership.workspaceId);
-          role = membership.role;
-        }
-      }
-
-      if (!workspace) {
-        workspace = await Workspace.create({
-          name: `${user.fullName || user.email.split('@')[0]}'s Workspace`,
-          slug: `ws-${user._id.substring(0, 8)}`,
-          createdBy: user._id,
-          isPersonal: true,
-        });
-        await WorkspaceMembership.create({
-          workspaceId: workspace._id,
-          userId: user._id,
-          role: 'owner',
-        });
-      }
+      const membership = await WorkspaceMembership.findOne({ userId: user._id });
+      const workspace = membership ? await Workspace.findById(membership.workspaceId) : null;
+      if (!workspace || !membership) throw new AppError('No active workspace membership', 403, 'WORKSPACE_FORBIDDEN');
+      const role = membership.role;
 
       const token = TokenService.sign({
         userId: user._id,
         email: user.email,
         workspaceId: workspace._id,
         isSuperuser: user.isSuperuser,
+        tokenVersion: user.tokenVersion ?? 0,
       });
 
       const payload = {
@@ -202,6 +189,8 @@ export class AuthController {
           throw new AppError('New password must be at least 8 characters long', 400, 'PASSWORD_TOO_SHORT');
         }
         user.passwordHash = await bcrypt.hash(newPassword, 10);
+        user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+        await ApiKey.updateMany({ userId: user._id }, { $set: { isRevoked: true } });
       }
 
       await user.save();
@@ -209,6 +198,10 @@ export class AuthController {
       const workspace = await Workspace.findById(req.workspaceId);
 
       const payload = {
+        ...(newPassword ? { access_token: TokenService.sign({
+          userId: user._id, email: user.email, workspaceId: req.workspaceId,
+          tokenVersion: user.tokenVersion,
+        }) } : {}),
         user: {
           id: user._id,
           email: user.email,

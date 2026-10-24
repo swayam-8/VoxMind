@@ -17,7 +17,6 @@ import {
   Unplug,
   AlertCircle,
   FolderOpen,
-  Copy,
   Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -119,7 +118,7 @@ export function MeetingIntegrations() {
         ? "This request expired or belongs to another browser. Start the connection again."
         : reason === "OAUTH_ACCESS_DENIED"
           ? "Access was not granted. You can connect again whenever you are ready."
-          : "The account could not be connected. Check the app configuration and try again.";
+          : "The account could not be connected. Try reconnecting. If it continues, contact your workspace administrator.";
     toast({
       title:
         result === "success"
@@ -213,7 +212,7 @@ export function MeetingIntegrations() {
             Connect once. Keep the conversation.
           </h2>
           <p>
-            Import completed cloud recordings directly. VoxMind downloads a
+            Import completed cloud recordings directly. MeetingBrief downloads a
             local copy, then uses your existing transcription and intelligence
             pipeline.
           </p>
@@ -261,7 +260,7 @@ export function MeetingIntegrations() {
                         ? "Connected"
                         : account?.configured
                           ? "Not connected"
-                          : "Setup needed"}
+                          : "Not available yet"}
                   </Badge>
                 </div>
                 <div>
@@ -310,7 +309,7 @@ export function MeetingIntegrations() {
                       <Link2 size={20} />
                       {account?.configured
                         ? `Connect ${provider.name}`
-                        : "Set up connection"}
+                        : "View connection guide"}
                     </Button>
                   )}
                 </div>
@@ -320,6 +319,7 @@ export function MeetingIntegrations() {
           })}
         </div>
       )}
+      <Link to="/app/docs#meetings" className="text-link">How to connect and import recordings <ArrowUpRight size={18} /></Link>
       <p className="meeting-footnote">
         <Clock3 size={18} />
         Imports use existing recordings. Connecting an account does not join,
@@ -595,48 +595,18 @@ export function MeetingIntegrations() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enable {setup?.name} imports</DialogTitle>
+            <DialogTitle>Connect {setup?.name}</DialogTitle>
             <DialogDescription>
-              The server administrator needs to register a provider OAuth app.
-              Your account connects through the provider’s own sign-in page once
-              setup is complete.
+              This integration has not been enabled by the MeetingBrief service operator yet.
+              Once enabled, you can connect through {setup?.name}’s own sign-in page.
+              You do not need to register an app or enter client secrets.
             </DialogDescription>
           </DialogHeader>
           <div className="meeting-setup-details">
-            <h3>Redirect URL for the provider app</h3>
-            <code>{setup?.callbackUrl}</code>
-            <Button
-              variant="outline"
-              onClick={() => {
-                void navigator.clipboard
-                  .writeText(setup?.callbackUrl || "")
-                  .then(() => toast({ title: "Redirect URL copied" }))
-                  .catch(() =>
-                    toast({
-                      title: "Select and copy the URL above",
-                      variant: "danger",
-                    }),
-                  );
-              }}
-            >
-              <Copy size={18} />
-              Copy redirect URL
-            </Button>
-            <details>
-              <summary>Server configuration</summary>
-              <p>
-                Required settings: {setup?.missingVariables.join(", ")}. Keep
-                credentials on the server; never put them in frontend variables.
-              </p>
-            </details>
-            <a
-              href="https://github.com/swayam-8/VoxMind/blob/main/docs/meeting-integrations.md"
-              target="_blank"
-              rel="noreferrer"
-              className="text-link"
-            >
-              Read setup instructions <ArrowUpRight size={18} />
-            </a>
+            <p>Check that your account supports cloud recordings and that you have permission to download them. Your provider password is never entered in MeetingBrief.</p>
+            <Link to="/app/docs#meetings" className="text-link" onClick={() => setSetup(null)}>
+              Read the meeting connection guide <ArrowUpRight size={18} />
+            </Link>
           </div>
         </DialogContent>
       </Dialog>
@@ -652,7 +622,7 @@ export function MeetingIntegrations() {
               Disconnect {disconnect ? providerName(disconnect) : ""}?
             </DialogTitle>
             <DialogDescription>
-              VoxMind will remove the saved connection. Existing imported
+              MeetingBrief will remove the saved connection. Existing imported
               recordings stay in your library. You can also revoke this app in
               your provider account settings.
             </DialogDescription>

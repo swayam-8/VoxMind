@@ -291,7 +291,7 @@ export function AskPage() {
                 >
                   <div className="flex items-center justify-between gap-4 text-xs opacity-70">
                     <span className="font-semibold uppercase tracking-wider">
-                      {msg.sender === "user" ? "You" : "VoxMind Intelligence"}
+                      {msg.sender === "user" ? "You" : "MeetingBrief Intelligence"}
                     </span>
                     <span>{msg.createdAt}</span>
                   </div>

@@ -5,6 +5,7 @@ import {
   authenticate,
   AuthenticatedRequest,
   requireRole,
+  requireSession,
 } from "../../middleware/auth.js";
 import { AppError } from "../../middleware/errorHandler.js";
 import { apiSuccess } from "../../utils/response.js";
@@ -153,7 +154,7 @@ router.get(
   }),
 );
 
-router.use(authenticate, requireRole(["owner", "admin", "member"]));
+router.use(authenticate, requireSession, requireRole(["owner", "admin", "member"]));
 router.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   next();
@@ -176,8 +177,6 @@ router.get(
           configured: requirements(selected).length === 0,
           connected: !!account,
           connectedAt: account?.createdAt || null,
-          missingVariables: requirements(selected),
-          callbackUrl: callbackUrl(selected),
           scopes: providerInfo[selected].scopes.split(" "),
         };
       }),
@@ -205,7 +204,6 @@ router.post(
         "This provider needs to be configured by the server administrator.",
         503,
         "INTEGRATION_NOT_CONFIGURED",
-        { missingVariables: requirements(selected) },
       );
     encryptionKey();
     const state = crypto.randomBytes(32).toString("base64url");
@@ -235,7 +233,7 @@ router.delete(
     return apiSuccess(
       res,
       { disconnected: true },
-      "Account disconnected from VoxMind. Existing imports are kept.",
+      "Account disconnected from MeetingBrief. Existing imports are kept.",
     );
   }),
 );

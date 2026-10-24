@@ -7,8 +7,6 @@ export interface MeetingConnection {
   configured: boolean;
   connected: boolean;
   connectedAt: string | null;
-  missingVariables: string[];
-  callbackUrl: string;
   scopes: string[];
 }
 export interface MeetingImport {

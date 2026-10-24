@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { ApiCodeExamples } from "../components/api-code-examples";
 import { MeetingIntegrations } from "../components/meeting-integrations";
 import { useState, useEffect } from "react";
 import {
@@ -5,7 +7,6 @@ import {
   Plus,
   Copy,
   Trash2,
-  Code2,
   Activity,
   AlertTriangle,
   Loader2,
@@ -15,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -32,17 +32,22 @@ import {
 } from "@/lib/api-client";
 
 export function IntegrationsPage() {
+  const [clock, setClock] = useState(() => Date.now());
   const [keys, setKeys] = useState<ApiApiKey[]>([]);
   const [usage, setUsage] = useState<ApiUsageSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accessLevel, setAccessLevel] = useState<"read" | "write">("read");
+  const [expiryDays, setExpiryDays] = useState(90);
+  const [keysError, setKeysError] = useState("");
   const [newKeyName, setNewKeyName] = useState("");
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      setKeysError("");
       const [keysRes, usageRes] = await Promise.allSettled([
         apiClient.getApiKeys(),
         apiClient.getUsage(),
@@ -50,6 +55,8 @@ export function IntegrationsPage() {
 
       if (keysRes.status === "fulfilled" && keysRes.value.data) {
         setKeys(keysRes.value.data);
+      } else if (keysRes.status === "rejected") {
+        setKeysError(keysRes.reason instanceof Error ? keysRes.reason.message : "Could not load API keys.");
       }
       if (usageRes.status === "fulfilled" && usageRes.value.data) {
         setUsage(usageRes.value.data);
@@ -61,6 +68,8 @@ export function IntegrationsPage() {
 
   useEffect(() => {
     loadData();
+    const timer = window.setInterval(() => setClock(Date.now()), 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const handleGenerateKey = async (e: React.FormEvent) => {
@@ -69,10 +78,11 @@ export function IntegrationsPage() {
 
     try {
       setIsSubmitting(true);
-      const res = await apiClient.createApiKey({ name: newKeyName.trim() });
+      const res = await apiClient.createApiKey({ name: newKeyName.trim(), access_level: accessLevel, expires_days: expiryDays });
       const createdKey = res.data;
 
-      setKeys((prev) => [createdKey, ...prev]);
+      const { raw_key: _secret, rawKey: _legacySecret, ...publicKey } = createdKey as ApiApiKey & { rawKey?: string };
+      setKeys((prev) => [publicKey, ...prev]);
       setGeneratedKey(createdKey.raw_key || null);
       setNewKeyName("");
 
@@ -124,32 +134,7 @@ export function IntegrationsPage() {
     });
   };
 
-  const CURL_EXAMPLE = `curl -X POST "http://localhost:5000/api/v1/recordings" \\
-  -H "Authorization: Bearer vm_live_9a4f..." \\
-  -F "file=@meeting_audio.mp3" \\
-  -F "title=Q4 Architecture Sync"`;
-
-  const PYTHON_EXAMPLE = `import requests
-
-url = "http://localhost:5000/api/v1/recordings"
-headers = {"Authorization": "Bearer vm_live_9a4f..."}
-files = {"file": open("meeting_audio.mp3", "rb")}
-data = {"title": "Q4 Architecture Sync"}
-
-response = requests.post(url, headers=headers, files=files, data=data)
-print(response.json())`;
-
-  const TS_EXAMPLE = `import { apiClient } from "@/lib/api-client";
-
-// Ingest audio via VoxMind REST API
-const formData = new FormData();
-formData.append("file", audioBlob, "sync.wav");
-formData.append("title", "Engineering Standup");
-
-const result = await apiClient.uploadRecording(formData);
-console.log("Job status:", result.data.status);`;
-
-  const activeKeys = keys.filter((k) => !k.is_revoked);
+  const activeKeys = keys.filter((key) => !key.is_revoked && (!key.expires_at || new Date(key.expires_at).getTime() > clock));
 
   return (
     <div className="feature-page space-y-8">
@@ -178,6 +163,7 @@ console.log("Job status:", result.data.status);`;
             setGeneratedKey(null);
             setCreateDialogOpen(true);
           }}
+          disabled={!!keysError || loading}
           className="shadow-sm"
         >
           <Plus className="w-5 h-5 mr-1.5" />
@@ -195,27 +181,23 @@ console.log("Job status:", result.data.status);`;
             <Activity className="w-5 h-5 text-accent" />
           </div>
           <div className="text-xl font-bold text-text-primary font-mono">
-            {usage?.total_requests.toLocaleString() ?? 0} /{" "}
-            {(usage?.quota.requests_limit ?? 100000).toLocaleString()}
+            {usage?.total_requests.toLocaleString() ?? "—"}
           </div>
           <div className="text-xs text-text-secondary">
-            {usage
-              ? `${((usage.total_requests / usage.quota.requests_limit) * 100).toFixed(1)}% quota consumed`
-              : "Standard Workspace Quota"}
+            Recorded AI and transcription activity
           </div>
         </div>
 
         <div className="p-4.5 rounded-xl border border-border bg-surface-1 space-y-1.5">
           <div className="flex items-center justify-between text-sm text-text-muted">
-            <span>Audio Processed</span>
+            <span>Processing time</span>
             <Mic className="w-5 h-5 text-success" />
           </div>
           <div className="text-xl font-bold text-text-primary font-mono">
-            {usage?.total_audio_hours ?? 0} hrs /{" "}
-            {usage?.quota.audio_hours_limit ?? 50} hrs
+            {usage?.total_processing_hours ?? "—"} hrs
           </div>
           <div className="text-xs text-text-secondary">
-            Local faster-whisper transcription
+            Recorded transcription and AI execution time
           </div>
         </div>
 
@@ -228,7 +210,7 @@ console.log("Job status:", result.data.status);`;
             {(usage?.total_tokens ?? 0).toLocaleString()} tokens
           </div>
           <div className="text-xs text-text-secondary">
-            Ollama summarization & RAG
+            Summaries and question answering
           </div>
         </div>
       </div>
@@ -242,8 +224,7 @@ console.log("Job status:", result.data.status);`;
               Developer API Keys
             </h3>
             <p className="text-sm text-text-muted mt-0.5">
-              Secret keys grant full programmatic access to your authorized
-              workspace voice endpoints.
+              Choose read-only or read and write access. Keep secret keys on your server.
             </p>
           </div>
           <Badge variant="outline" className="text-sm">
@@ -251,7 +232,9 @@ console.log("Job status:", result.data.status);`;
           </Badge>
         </div>
 
-        {loading ? (
+        {keysError ? (
+          <div role="alert" className="meeting-notice"><AlertTriangle /><p>{keysError}</p><Button variant="outline" onClick={loadData}>Try again</Button></div>
+        ) : loading ? (
           <div className="py-8 flex items-center justify-center text-text-muted text-sm">
             <Loader2 className="w-5 h-5 mr-2 animate-spin text-accent" />
             Loading developer keys...
@@ -266,7 +249,9 @@ console.log("Job status:", result.data.status);`;
             {keys.map((key) => (
               <div
                 key={key.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-surface-2/60 border border-border gap-3"
+                role="group"
+                aria-label={`API key ${key.name}`}
+                className="api-key-group flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-surface-2/60 border border-border gap-3"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -274,12 +259,13 @@ console.log("Job status:", result.data.status);`;
                       {key.name}
                     </span>
                     <Badge
-                      variant={key.is_revoked ? "outline" : "success"}
+                      variant={key.is_revoked || (key.expires_at && new Date(key.expires_at).getTime() <= clock) ? "outline" : "success"}
                       className="text-xs"
                     >
-                      {key.is_revoked ? "revoked" : "active"}
+                      {key.is_revoked ? "revoked" : key.expires_at && new Date(key.expires_at).getTime() <= clock ? "expired" : "active"}
                     </Badge>
                   </div>
+                  <p className="text-xs text-text-muted">{key.access_level === "write" ? "Read and write" : "Read-only"}{key.expires_at ? ` · Expires ${new Date(key.expires_at).toLocaleDateString()}` : ""}</p>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted font-mono">
                     <span className="bg-surface-1 px-2 py-0.5 rounded border border-border">
                       {key.key_prefix}
@@ -318,79 +304,14 @@ console.log("Job status:", result.data.status);`;
         )}
       </div>
 
-      {/* Code Integration Examples */}
-      <div className="rounded-xl border border-border bg-surface-1 p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-border/50 pb-3">
-          <div className="flex items-center gap-2">
-            <Code2 className="h-5 w-5 text-accent" />
-            <h3 className="text-sm font-semibold text-text-primary">
-              Integration Code Samples
-            </h3>
-          </div>
-          <span className="text-sm text-text-muted font-mono">
-            POST /api/v1/recordings
-          </span>
-        </div>
-
-        <Tabs defaultValue="curl" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-sm">
-            <TabsTrigger value="curl">cURL</TabsTrigger>
-            <TabsTrigger value="python">Python</TabsTrigger>
-            <TabsTrigger value="ts">TypeScript</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="curl" className="pt-3">
-            <div className="relative">
-              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-sm font-mono text-text-primary overflow-x-auto leading-relaxed">
-                {CURL_EXAMPLE}
-              </pre>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => copyCode(CURL_EXAMPLE)}
-                className="absolute right-3 top-3 h-7 text-sm"
-              >
-                <Copy className="w-5 h-5 mr-1" /> Copy
-              </Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="python" className="pt-3">
-            <div className="relative">
-              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-sm font-mono text-text-primary overflow-x-auto leading-relaxed">
-                {PYTHON_EXAMPLE}
-              </pre>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => copyCode(PYTHON_EXAMPLE)}
-                className="absolute right-3 top-3 h-7 text-sm"
-              >
-                <Copy className="w-5 h-5 mr-1" /> Copy
-              </Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="ts" className="pt-3">
-            <div className="relative">
-              <pre className="p-4 rounded-lg bg-surface-2 border border-border text-sm font-mono text-text-primary overflow-x-auto leading-relaxed">
-                {TS_EXAMPLE}
-              </pre>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => copyCode(TS_EXAMPLE)}
-                className="absolute right-3 top-3 h-7 text-sm"
-              >
-                <Copy className="w-5 h-5 mr-1" /> Copy
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+      <section className="docs-section space-y-4">
+        <div><h2 className="text-lg font-semibold">Build with the MeetingBrief API</h2><p className="text-sm text-text-secondary mt-2">Upload audio, check processing, and retrieve transcripts, decisions, tasks, or answers from your own server.</p></div>
+        <Link className="text-link" to="/app/docs#api">Read the quickstart and endpoint reference</Link>
+        <ApiCodeExamples />
+      </section>
 
       {/* Generate API Key Modal Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) setGeneratedKey(null); }}>
         <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full border-border bg-surface-1 p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">
@@ -433,7 +354,7 @@ console.log("Job status:", result.data.status);`;
               <DialogFooter className="pt-2">
                 <Button
                   variant="secondary"
-                  onClick={() => setCreateDialogOpen(false)}
+                  onClick={() => { setCreateDialogOpen(false); setGeneratedKey(null); }}
                 >
                   I Have Saved My Key
                 </Button>
@@ -453,15 +374,29 @@ console.log("Job status:", result.data.status);`;
                   placeholder="e.g. Production Ingestion Service"
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
+                  maxLength={100}
                   required
                 />
               </div>
 
+              <div className="integration-key-options">
+                <label htmlFor="api-key-access">Access
+                  <select aria-label="API key access" id="api-key-access" value={accessLevel} onChange={(event) => setAccessLevel(event.target.value as "read" | "write")}>
+                    <option value="read">Read-only — retrieve results and ask questions</option>
+                    <option value="write">Read and write — also upload, edit, and delete</option>
+                  </select>
+                </label>
+                <label htmlFor="api-key-expiry">Expires after
+                  <select aria-label="API key expiry" id="api-key-expiry" value={expiryDays} onChange={(event) => setExpiryDays(Number(event.target.value))}>
+                    <option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>365 days</option>
+                  </select>
+                </label>
+              </div>
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setCreateDialogOpen(false)}
+                  onClick={() => { setCreateDialogOpen(false); setGeneratedKey(null); }}
                   disabled={isSubmitting}
                 >
                   Cancel

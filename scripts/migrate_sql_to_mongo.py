@@ -25,7 +25,7 @@ def run_migration(sqlite_path='backend-flask/instance/voxmind.db', mongo_uri=Non
 
     print(f"=== VoxMind SQL to MongoDB Migration ===")
     print(f"Source SQLite: {sqlite_path}")
-    print(f"Target Mongo:  {mongo_uri}")
+    print("Target: configured MongoDB database")
 
     if not os.path.exists(sqlite_path):
         print(f"Error: Source SQLite database not found at {sqlite_path}")

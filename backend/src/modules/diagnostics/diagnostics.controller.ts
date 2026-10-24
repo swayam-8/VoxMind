@@ -11,7 +11,7 @@ export class DiagnosticsController {
     const dbOk = isDbConnected();
     const payload = {
       status: dbOk ? 'healthy' : 'degraded',
-      service: 'voxmind-backend',
+      service: 'meetingbrief-backend',
       database: dbOk ? 'connected' : 'disconnected',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
@@ -46,10 +46,12 @@ export class DiagnosticsController {
 
     // 2. Check Redis
     let redisStatus = 'degraded';
+    let diagnosticRedis: Redis | undefined;
     let redisLatency = 0;
     try {
       const redisOptions = getRedisConnection();
-      const redis = new Redis({ ...redisOptions, connectTimeout: 1500, lazyConnect: true });
+      const redis = diagnosticRedis = new Redis({ ...redisOptions, maxRetriesPerRequest: 1, connectTimeout: 1500, lazyConnect: true });
+      redis.on('error', () => {});
       const t0 = Date.now();
       await redis.connect();
       await redis.ping();
@@ -58,7 +60,7 @@ export class DiagnosticsController {
       await redis.quit();
     } catch (_e) {
       redisStatus = 'offline';
-    }
+    } finally { diagnosticRedis?.disconnect(); }
 
     // 3. Check AI microservice
     let aiHealth = {
@@ -101,23 +103,20 @@ export class DiagnosticsController {
           latency_ms: redisLatency,
           message: redisStatus === 'healthy' ? 'Redis 7 connected' : 'Redis offline',
         },
-        celery: {
-          status: redisStatus === 'healthy' ? 'healthy' : 'offline',
-          active_workers: redisStatus === 'healthy' ? 2 : 0,
+        workers: {
+          status: redisStatus === 'healthy' ? 'unknown' : 'offline',
           worker_names: ['bullmq-audio-worker', 'bullmq-ai-worker'],
-          message: 'BullMQ queues initialized',
+          message: redisStatus === 'healthy' ? 'Queue connection available; check job progress for worker activity' : 'Queue connection unavailable',
         },
         ollama: {
           status: aiHealth.ollama_available ? 'healthy' : 'offline',
-          configured_model: 'llama3.2:3b',
+          configured_model: process.env.OLLAMA_MODEL || 'llama3.2',
           model_available: aiHealth.ollama_available,
-          downloaded_models: ['llama3.2:3b'],
           message: aiHealth.ollama_available ? 'Ollama operational' : 'Ollama offline',
         },
         whisper: {
           status: aiHealth.whisper_available ? 'healthy' : 'offline',
           whisper_installed: aiHealth.whisper_available,
-          ffmpeg_installed: true,
           model: 'base',
           device: 'cpu',
           compute_type: 'int8',

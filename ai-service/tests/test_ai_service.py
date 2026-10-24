@@ -10,8 +10,11 @@ from app.services.rag_service import RAGService
 
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+def client(monkeypatch, tmp_path):
+    from app import config
+    monkeypatch.setattr(config, "AI_INTERNAL_SECRET", "test-only-internal-key")
+    monkeypatch.setattr(config, "AUDIO_STORAGE_ROOT", str(tmp_path))
+    return TestClient(app, headers={"X-AI-Internal-Key": "test-only-internal-key"})
 
 
 @pytest.fixture(autouse=True)
@@ -99,7 +102,7 @@ def test_health_endpoint(client: TestClient):
     res = client.get("/health")
     assert res.status_code == 200
     data = res.json()
-    assert data["service"] == "VoxMind AI Microservice"
+    assert data["service"] == "MeetingBrief AI Microservice"
     assert "whisper" in data["services"]
     assert "embedding" in data["services"]
 

@@ -16,6 +16,10 @@ try:
 
     def _safe_av_open(*args, **kwargs):
         kwargs.pop("metadata_errors", None)
+        options = dict(kwargs.get("options") or {})
+        options["protocol_whitelist"] = "file,pipe"
+        options["format_whitelist"] = config.AUDIO_FORMAT_WHITELIST
+        kwargs["options"] = options
         return _original_av_open(*args, **kwargs)
 
     av.open = _safe_av_open

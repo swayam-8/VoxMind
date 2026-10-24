@@ -1,8 +1,8 @@
 {
-  "name": "voxmind",
+  "name": "meetingbrief",
   "version": "1.0.0",
   "private": true,
-  "description": "Start the complete local VoxMind stack with one command",
+  "description": "Start the complete local MeetingBrief stack with one command",
   "engines": {
     "node": ">=22.12.0"
   },

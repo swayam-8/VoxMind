@@ -198,14 +198,14 @@ export class CollectionsController {
         throw new AppError('Collection not found', 404, 'COLLECTION_NOT_FOUND');
       }
 
-      await Recording.updateMany(
+      const updated = await Recording.updateMany(
         { _id: { $in: recordingIds }, workspaceId },
         { $set: { collectionId: id } }
       );
 
       const payload = {
         collection_id: id,
-        assigned_count: recordingIds.length,
+        assigned_count: updated.matchedCount,
       };
 
       return res.json({

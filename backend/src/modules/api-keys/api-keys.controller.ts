@@ -12,6 +12,7 @@ export class ApiKeysController {
 
       const enriched = keys.map((k) => ({
         id: k._id,
+        access_level: k.accessLevel || 'read',
         workspace_id: k.workspaceId,
         user_id: k.userId,
         name: k.name,
@@ -45,15 +46,16 @@ export class ApiKeysController {
       const { name } = req.body;
       const expiresInDays = req.body.expires_days || req.body.expires_in_days || req.body.expiresInDays;
 
+      if (await ApiKey.countDocuments({ workspaceId, isRevoked: false, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }) >= 20) {
+        throw new AppError('Revoke an unused key before creating another one', 409, 'API_KEY_LIMIT');
+      }
+
       const randomPart = crypto.randomBytes(24).toString('hex');
-      const rawKey = `vm_live_${randomPart}`;
+      const rawKey = `mb_live_${randomPart}`;
       const keyPrefix = `${rawKey.substring(0, 16)}...`;
       const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
-      let expiresAt: Date | null = null;
-      if (expiresInDays) {
-        expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
-      }
+      const expiresAt = new Date(Date.now() + (expiresInDays || 90) * 24 * 60 * 60 * 1000);
 
       const apiKey = await ApiKey.create({
         workspaceId,
@@ -62,10 +64,12 @@ export class ApiKeysController {
         keyPrefix,
         keyHash,
         expiresAt,
+        accessLevel: req.body.access_level || 'read',
       });
 
       const payload = {
         id: apiKey._id,
+        access_level: apiKey.accessLevel,
         name: apiKey.name,
         key_prefix: apiKey.keyPrefix,
         keyPrefix: apiKey.keyPrefix,

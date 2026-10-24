@@ -6,6 +6,8 @@ import { AppError } from '../middleware/errorHandler.js';
 const client = axios.create({
   baseURL: config.aiServiceUrl,
   timeout: 600000, // 10 minutes timeout for heavy AI tasks
+  headers: { 'X-AI-Internal-Key': config.aiInternalSecret },
+  maxRedirects: 0,
 });
 
 client.interceptors.response.use(undefined, (error: unknown) => {

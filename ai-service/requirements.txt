@@ -8,5 +8,6 @@ torch>=2.2.0
 numpy>=1.26.0
 python-dotenv>=1.0.0
 requests>=2.31.0
-pytest>=8.0.0
-httpx>=0.27.0
+
+# Minimum patched version for transitive model-cache locking.
+filelock>=4.2.1

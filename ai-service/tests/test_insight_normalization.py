@@ -49,7 +49,8 @@ def test_analyze_endpoint_parses_real_model_response_shape(monkeypatch):
         assert "Do not invent decisions" in kwargs["system_prompt"]
         return json.dumps({"summary": "The release was approved.", "decisions": ["Release Friday"], "action_items": ["Alex will send the checklist"], "key_takeaways": [], "topics": ["Release"]})
     monkeypatch.setattr(OllamaService, "_call_ollama", infer)
-    response = TestClient(app).post("/analyze", json={"transcript_text": "[0.00s] Alex: We agreed to release Friday. I will send the checklist."})
+    monkeypatch.setattr(__import__("app.config", fromlist=["config"]), "AI_INTERNAL_SECRET", "normalization-test-key")
+    response = TestClient(app, headers={"X-AI-Internal-Key": "normalization-test-key"}).post("/analyze", json={"transcript_text": "[0.00s] Alex: We agreed to release Friday. I will send the checklist."})
     assert response.status_code == 200
     assert response.json()["decisions"][0]["decision"] == "Release Friday"
     assert response.json()["action_items"][0]["completed"] is False

@@ -40,8 +40,8 @@ export function Header({
         <div className="header-actions">
           <span className="header-divider" />
           <ThemeToggle />
-          <Link className="header-help" to="/app/settings#diagnostics">
-            <span className="hidden sm:inline">System status</span>
+          <Link className="header-help" to="/app/docs">
+            <span className="hidden sm:inline">Help & API</span>
             <ArrowUpRight size={20} />
           </Link>
         </div>

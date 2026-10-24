@@ -72,7 +72,7 @@ class OllamaService:
         try:
             req = urllib.request.Request(
                 f"{base_url}/api/tags",
-                headers={"User-Agent": "VoxMind-OllamaService"},
+                headers={"User-Agent": "MeetingBrief-OllamaService"},
             )
             with urllib.request.urlopen(req, timeout=3.0) as response:
                 if response.status == 200:
@@ -132,7 +132,7 @@ class OllamaService:
             data=body_bytes,
             headers={
                 "Content-Type": "application/json",
-                "User-Agent": "VoxMind-OllamaService/1.0",
+                "User-Agent": "MeetingBrief-OllamaService/1.0",
             },
             method="POST",
         )
@@ -308,7 +308,7 @@ class OllamaService:
         clipped_transcript = transcript_text[:max_chars]
 
         system_prompt = (
-            "You are VoxMind AI, an intelligent voice meeting assistant.\n"
+            "You are MeetingBrief AI, an intelligent voice meeting assistant.\n"
             "Analyze the meeting dialogue transcript and extract the key points, decisions, and action items.\n"
             "Respond ONLY with a valid JSON object using exactly these keys:\n"
             "{\n"
@@ -355,7 +355,7 @@ class OllamaService:
         clipped_transcript = transcript_text[:max_chars]
 
         system_prompt = (
-            "You are VoxMind QA. Answer the user's question grounded strictly in the dialogue transcript.\n"
+            "You are MeetingBrief QA. Answer the user's question grounded strictly in the dialogue transcript.\n"
             "Return ONLY a valid JSON object matching:\n"
             "{\n"
             '  "answer": "Detailed answer explaining evidence from the conversation.",\n'

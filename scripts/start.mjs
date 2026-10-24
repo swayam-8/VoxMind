@@ -8,12 +8,16 @@ import { parseEnv } from 'node:util';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const integrationSettings = [
   'INTEGRATION_ENCRYPTION_KEY',
+  'AI_INTERNAL_SECRET',
   'INTEGRATIONS_API_BASE_URL',
   'FRONTEND_URL',
   'ZOOM_CLIENT_ID',
   'ZOOM_CLIENT_SECRET',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
+  'GOOGLE_AUTH_CLIENT_ID',
+  'GOOGLE_AUTH_CLIENT_SECRET',
+  'AUTH_API_BASE_URL',
   'WEBEX_CLIENT_ID',
   'WEBEX_CLIENT_SECRET',
 ];
@@ -52,6 +56,9 @@ export function prepareEnvironment(root) {
   if (!values.INTEGRATION_ENCRYPTION_KEY) {
     set('INTEGRATION_ENCRYPTION_KEY', randomBytes(32).toString('hex'));
   }
+  if (!values.AI_INTERNAL_SECRET || values.AI_INTERNAL_SECRET === 'voxmind-internal-ai-service-secret') {
+    set('AI_INTERNAL_SECRET', randomBytes(32).toString('hex'));
+  }
   fs.writeFileSync(target, source, { mode: 0o600 });
   if (process.platform !== 'win32') fs.chmodSync(target, 0o600);
 }
@@ -83,7 +90,7 @@ export async function main(action = 'start', root = projectRoot, execute = docke
 
   if (action === 'stop') {
     await execute(['compose', '--profile', 'models', 'down'], root);
-    console.log('VoxMind stopped. Your database, recordings and models are preserved.');
+    console.log('MeetingBrief stopped. Your database, recordings and models are preserved.');
     return;
   }
   if (action === 'logs') {
@@ -92,7 +99,7 @@ export async function main(action = 'start', root = projectRoot, execute = docke
   }
 
   prepareEnvironment(root);
-  console.log('Starting all VoxMind services. The first run downloads and builds images and can take several minutes.');
+  console.log('Starting all MeetingBrief services. The first run downloads and builds images and can take several minutes.');
   console.log('If a port is in use, stop the old development server and run npm start again.');
   try {
     await execute(['compose', 'up', '--build', '--detach', '--wait', '--wait-timeout', '1200'], root);
@@ -101,14 +108,14 @@ export async function main(action = 'start', root = projectRoot, execute = docke
   } catch {
     throw new Error('Startup did not finish. Run npm run logs for details, then retry npm start.');
   }
-  console.log('\nVoxMind is ready: http://localhost:5173');
+  console.log('\nMeetingBrief is ready: http://localhost:5173');
   console.log('On the first run, AI summaries become available after the background model download finishes.');
   console.log('Stop everything: npm stop\nView logs: npm run logs');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main(process.argv[2]).catch((error) => {
-    console.error(`\n[VoxMind] ${error.message}`);
+    console.error(`\n[MeetingBrief] ${error.message}`);
     process.exitCode = 1;
   });
 }

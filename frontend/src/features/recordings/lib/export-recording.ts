@@ -63,7 +63,7 @@ export function getRecordingReportHtml(recording: ApiRecording): string {
   const unavailable = status === "failed" ? "Analysis could not finish. Regenerate the analysis to include these insights." :
     status === "pending" || status === "processing" ? "Analysis is still running." : "Analysis has not been generated.";
   const empty = (text: string) => `<p class="empty">${e(status === "completed" || (summary && !status) ? text : unavailable)}</p>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${e(recording.title)} — VoxMind</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${e(recording.title)} — MeetingBrief</title>
     <style>
       @page { size: A4; margin: 18mm 16mm; }
       * { box-sizing: border-box; }
@@ -91,8 +91,8 @@ export function getRecordingReportHtml(recording: ApiRecording): string {
       button { background: #3159df; border: 0; border-radius: 8px; padding: 11px 18px; color: white; font-weight: 700; cursor: pointer; }
       @media print { body { max-width: none; margin: 0; padding: 0; } .print-tools { display: none; } }
     </style></head><body>
-    <div class="print-tools"><span>Choose “Save as PDF” in the print dialog.</span><button onclick="window.print()">Save as PDF</button></div>
-    <header><div class="brand">VoxMind / Recording report</div><h1>${e(recording.title)}</h1>
+    <div class="print-tools"><span>Choose “Save as PDF” in the print dialog.</span><button id="print-report">Save as PDF</button></div>
+    <header><div class="brand">MeetingBrief / Recording report</div><h1>${e(recording.title)}</h1>
     <div class="meta">${e(new Date(recording.created_at).toLocaleDateString())} · ${e(recording.filename)} · ${e(sourceTime(recording.duration_seconds))}</div></header>
     <section><h2>01 / Summary</h2>${summary?.summary_markdown ? `<p class="prose">${e(summary.summary_markdown)}</p>` : empty("No summary available.")}
     ${summary?.key_takeaways?.length ? `<h3>Key takeaways</h3><ul>${summary.key_takeaways.map((item) => `<li>${e(item)}</li>`).join("")}</ul>` : ""}
@@ -100,7 +100,7 @@ export function getRecordingReportHtml(recording: ApiRecording): string {
     <section><h2>02 / Decisions</h2>${summary?.decisions?.length ? summary.decisions.map((item) => `<div class="card"><h3>${e(item.decision)}</h3>${item.context ? `<p class="prose">${e(item.context)}</p>` : ""}${(item.source_timestamp ?? item.sourceTimestamp) != null ? `<div class="source">Audio evidence: ${e(sourceTime(item.source_timestamp ?? item.sourceTimestamp))}</div>` : ""}</div>`).join("") : empty("No explicit decisions were identified in this conversation.")}</section>
     <section><h2>03 / Actions</h2>${recording.action_items?.length ? `<table><thead><tr><th>Action</th><th>Owner / due date</th><th>Status</th></tr></thead><tbody>${recording.action_items.map((item) => `<tr><td>${e(item.task)}${item.source_timestamp != null ? `<div class="source">Audio: ${e(sourceTime(item.source_timestamp))}</div>` : ""}</td><td>${e(item.assignee || "Unassigned")}<br>${e(item.due_date || "No due date")}</td><td>${item.completed ? "Completed" : "Open"}</td></tr>`).join("")}</tbody></table>` : empty("No action items were assigned in this conversation.")}</section>
     <section><h2>04 / Ask AI — Questions and answers</h2>${recording.questions?.length ? recording.questions.map((item, index) => `<article class="card"><div class="label">Question ${index + 1}</div><p class="question prose">${e(item.question)}</p><div class="label">Answer</div><p class="prose">${e(item.answer)}</p><div class="source">${item.supported_by_transcript ? "Supported by transcript" : "Not supported by transcript"}${item.timestamps?.length ? ` · Audio evidence: ${item.timestamps.map(sourceTime).map(e).join(", ")}` : ""} · ${e(item.model_name)}</div></article>`).join("") : '<p class="empty">No saved questions yet.</p>'}</section>
-    <footer>Exported from VoxMind. This report includes the summary, decisions, actions, and your saved recording conversation.</footer>
+    <footer>Exported from MeetingBrief. This report includes the summary, decisions, actions, and your saved recording conversation.</footer>
     </body></html>`;
 }
 
@@ -110,5 +110,6 @@ export function printRecordingPdf(recording: ApiRecording) {
   report.opener = null;
   report.document.write(getRecordingReportHtml(recording));
   report.document.close();
+  report.document.getElementById("print-report")?.addEventListener("click", () => report.print());
   void report.document.fonts.ready.then(() => { if (!report.closed) { report.focus(); report.print(); } });
 }

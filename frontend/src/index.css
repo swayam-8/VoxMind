@@ -4,6 +4,8 @@
 @import "./styles/integrations.css";
 @import "./styles/activity.css";
 @import "./styles/recording-detail.css";
+@import "./styles/documentation.css";
+@import "./styles/marketing.css";
 
 @theme {
   --color-background: var(--background);

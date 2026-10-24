@@ -8,6 +8,7 @@ import {
   Sparkles,
   FolderOpen,
   Cable,
+  BookOpen,
   Settings2,
   LogOut,
   ChevronsUpDown,
@@ -31,10 +32,11 @@ const navigation = [
   { label: "Overview", href: "/app/overview", icon: LayoutDashboard },
   { label: "Recordings", href: "/app/recordings", icon: Mic2 },
   { label: "Collections", href: "/app/collections", icon: FolderOpen },
-  { label: "Ask VoxMind", href: "/app/ask", icon: Sparkles },
+  { label: "Ask MeetingBrief", href: "/app/ask", icon: Sparkles },
 ];
 const management = [
   { label: "Integrations", href: "/app/api", icon: Cable },
+  { label: "Guides & API", href: "/app/docs", icon: BookOpen },
   { label: "Settings", href: "/app/settings", icon: Settings2 },
 ];
 
@@ -83,7 +85,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           <AudioWaveform size={28} />
         </span>
         <span>
-          voxmind<span className="brand-period">.</span>
+          meetingbrief<span className="brand-period">.</span>
         </span>
       </Link>
       <div className="workspace-label">
@@ -112,7 +114,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           </span>
         </Link>
         <p className="sidebar-privacy">
-          <ShieldCheck size={14} /> Built for local intelligence
+          <ShieldCheck size={14} /> Your recordings. Your workspace.
         </p>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -183,7 +185,7 @@ export function Sidebar({
         >
           <DialogTitle className="sr-only">Workspace navigation</DialogTitle>
           <DialogDescription className="sr-only">
-            Navigate VoxMind and manage your account.
+            Navigate MeetingBrief and manage your account.
           </DialogDescription>
           <SidebarContent onClose={onClose} />
         </DialogContent>

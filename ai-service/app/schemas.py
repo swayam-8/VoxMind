@@ -5,9 +5,9 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class TranscribeRequest(BaseModel):
-    audio_path: str = Field(default="", description="Absolute server path to audio file")
-    file_path: Optional[str] = Field(None, description="Alias for audio_path")
-    language: Optional[str] = Field(None, description="Optional ISO language code")
+    audio_path: str = Field(default="", max_length=4096, description="Absolute server path to audio file")
+    file_path: Optional[str] = Field(None, max_length=4096, description="Alias for audio_path")
+    language: Optional[str] = Field(None, pattern=r"^[a-z]{2,3}$", description="Optional ISO language code")
 
     @model_validator(mode="before")
     @classmethod
@@ -35,8 +35,8 @@ class TranscribeResponse(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
-    transcript_text: str = Field(..., description="Ordered dialogue transcript with speaker tags")
-    model_name: Optional[str] = None
+    transcript_text: str = Field(..., min_length=1, max_length=1000000, description="Ordered dialogue transcript with speaker tags")
+    model_name: Optional[str] = Field(None, max_length=100)
     title: Optional[str] = None
 
 
@@ -67,15 +67,15 @@ class AnalyzeResponse(BaseModel):
 
 
 class AskTranscriptRequest(BaseModel):
-    transcript_text: str
-    question: str
-    model_name: Optional[str] = None
+    transcript_text: str = Field(min_length=1, max_length=1000000)
+    question: str = Field(min_length=1, max_length=4000)
+    model_name: Optional[str] = Field(None, max_length=100)
     title: Optional[str] = None
 
 
 class AskTranscriptResponse(BaseModel):
     success: bool = True
-    question: str
+    question: str = Field(min_length=1, max_length=4000)
     answer: str
     supported_by_transcript: bool
     timestamps: List[float]
@@ -85,7 +85,7 @@ class AskTranscriptResponse(BaseModel):
 
 
 class EmbedRequest(BaseModel):
-    texts: List[str] = Field(..., description="Passages to vectorize")
+    texts: List[str] = Field(..., min_length=1, max_length=2048, description="Passages to vectorize")
 
 
 class EmbedResponse(BaseModel):
@@ -107,9 +107,9 @@ class ChunkItem(BaseModel):
 
 
 class ChunkRequest(BaseModel):
-    segments: List[Dict[str, Any]]
-    target_words: Optional[int] = 180
-    overlap_words: Optional[int] = 35
+    segments: List[Dict[str, Any]] = Field(max_length=10000)
+    target_words: Optional[int] = Field(180, ge=1, le=2000)
+    overlap_words: Optional[int] = Field(35, ge=0, le=1000)
     max_tokens: Optional[int] = None
     overlap_tokens: Optional[int] = None
 
@@ -142,11 +142,11 @@ class CitationItem(BaseModel):
 
 
 class RAGRequest(BaseModel):
-    question: str = Field(default="", description="Question to answer")
+    question: str = Field(default="", max_length=4000, description="Question to answer")
     query: Optional[str] = Field(None, description="Alias for question")
-    passages: List[Dict[str, Any]] = Field(default_factory=list, description="Retrieved candidate passages")
-    chunks: Optional[List[Dict[str, Any]]] = Field(None, description="Alias for passages")
-    model_name: Optional[str] = None
+    passages: List[Dict[str, Any]] = Field(default_factory=list, max_length=100, description="Retrieved candidate passages")
+    chunks: Optional[List[Dict[str, Any]]] = Field(None, max_length=100, description="Alias for passages")
+    model_name: Optional[str] = Field(None, max_length=100)
     top_k: Optional[int] = None
 
     @model_validator(mode="before")
@@ -182,5 +182,5 @@ class RAGResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    service: str = "VoxMind AI Microservice"
+    service: str = "MeetingBrief AI Microservice"
     services: Dict[str, Any]

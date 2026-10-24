@@ -1,15 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { GoogleSignIn } from "../components/google-sign-in";
 import { AuthLayout } from "../components/auth-layout";
 import { apiClient } from "@/lib/api-client";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{
@@ -81,13 +83,14 @@ export function LoginPage() {
     <AuthLayout>
       <div className="auth-form">
         <span className="eyebrow">WELCOME TO YOUR WORKSPACE</span>
-        <h1>Good to have you back.</h1>
+        <h1>Welcome back.</h1>
         <p>Sign in and pick up the conversation.</p>
         {errors.general && (
           <div role="alert" className="auth-error">
             {errors.general}
           </div>
         )}
+        <GoogleSignIn />
         <form onSubmit={handleLogin} noValidate>
           <label className="auth-field" htmlFor="email">
             Email address
@@ -106,17 +109,17 @@ export function LoginPage() {
           </label>
           <label className="auth-field" htmlFor="password">
             Password
-            <Input
+            <span className="auth-password-wrap"><Input
               id="password"
               autoComplete="current-password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
               aria-invalid={!!errors.password}
               aria-describedby={errors.password ? "password-error" : undefined}
-            />
+            /><button type="button" className="auth-password-toggle" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff /> : <Eye />}</button></span>
             {errors.password && (
               <small id="password-error">{errors.password}</small>
             )}

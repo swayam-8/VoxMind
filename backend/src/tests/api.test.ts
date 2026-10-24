@@ -201,7 +201,7 @@ describe('VoxMind Express API Test Suite', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.id).toBeDefined();
-    expect(res.body.raw_key).toMatch(/^vm_live_/);
+    expect(res.body.raw_key).toMatch(/^mb_live_/);
     expect(res.body.key_prefix).toBeDefined();
 
     apiKeyId = res.body.id;
@@ -244,7 +244,9 @@ describe('VoxMind Express API Test Suite', () => {
   });
 
   it('GET /api/v1/diagnostics returns comprehensive diagnostics', async () => {
-    const res = await request(app).get('/api/v1/diagnostics');
+    const { User } = await import('../database/models/User.js');
+    await User.updateOne({ email: 'test@voxmind.dev' }, { isSuperuser: true });
+    const res = await request(app).get('/api/v1/diagnostics').set('Authorization', `Bearer ${authToken}`);
     expect(res.status).toBe(200);
     expect(res.body.database.type).toBe('MongoDB');
     expect(res.body.database.status).toBe('connected');

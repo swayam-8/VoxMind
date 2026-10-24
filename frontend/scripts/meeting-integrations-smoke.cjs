@@ -57,20 +57,19 @@ const executablePath =
       const card = page.locator(".meeting-provider-card").filter({
         has: page.getByRole("heading", { name: account.name, exact: true }),
       });
-      await card.getByRole("button", { name: "Set up connection" }).click();
+      await card.getByRole("button", { name: "View connection guide" }).click();
       await page
-        .getByRole("dialog", { name: `Enable ${account.name} imports` })
+        .getByRole("dialog", { name: `Connect ${account.name}` })
         .waitFor();
-      assert(
-        await page.getByText(account.callbackUrl, { exact: true }).isVisible(),
-      );
+      assert(await page.getByRole("link", { name: /Read the meeting connection guide/ }).isVisible());
+      assert.equal(await page.locator('a[href*="github.com"]').count(), 0);
       checks++;
       await page.keyboard.press("Escape");
       await page.getByRole("dialog").waitFor({ state: "hidden" });
-      await page.waitForFunction(el => el === document.activeElement, await card.getByRole("button", { name: "Set up connection" }).elementHandle());
+      await page.waitForFunction(el => el === document.activeElement, await card.getByRole("button", { name: "View connection guide" }).elementHandle());
       assert(
         await card
-          .getByRole("button", { name: "Set up connection" })
+          .getByRole("button", { name: "View connection guide" })
           .evaluate((el) => el === document.activeElement),
         "Setup dialog returns focus to its opener",
       );

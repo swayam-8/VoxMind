@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CollectionsController } from './collections.controller.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, requireRole } from '../../middleware/auth.js';
 import { validateRequest } from '../../middleware/validation.js';
 import {
   createCollectionSchema,
@@ -11,17 +11,18 @@ import {
 const router = Router();
 
 router.use(authenticate);
+const write = requireRole(['owner', 'admin', 'member']);
 
 router.get('/', CollectionsController.list);
-router.post('/', validateRequest({ body: createCollectionSchema }), CollectionsController.create);
+router.post('/', write, validateRequest({ body: createCollectionSchema }), CollectionsController.create);
 router.get('/:id', CollectionsController.getById);
-router.put('/:id', validateRequest({ body: updateCollectionSchema }), CollectionsController.update);
-router.delete('/:id', CollectionsController.delete);
+router.put('/:id', write, validateRequest({ body: updateCollectionSchema }), CollectionsController.update);
+router.delete('/:id', write, CollectionsController.delete);
 router.post(
-  '/:id/recordings',
+  '/:id/recordings', write,
   validateRequest({ body: addRecordingToCollectionSchema }),
   CollectionsController.addRecording
 );
-router.delete('/:id/recordings/:recordingId', CollectionsController.removeRecording);
+router.delete('/:id/recordings/:recordingId', write, CollectionsController.removeRecording);
 
 export const collectionRoutes = router;

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { ApiKeysController } from './api-keys.controller.js';
-import { authenticate, requireRole } from '../../middleware/auth.js';
+import { authenticate, requireRole, requireSession } from '../../middleware/auth.js';
 import { validateRequest } from '../../middleware/validation.js';
 import { createApiKeySchema } from './api-keys.schema.js';
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate, requireSession, requireRole(['owner', 'admin']));
 
 router.get('/', ApiKeysController.list);
 router.post(

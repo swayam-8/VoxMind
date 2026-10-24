@@ -1,0 +1,2 @@
+# Optional, one-time SQLite-to-MongoDB migration only.
+pymongo>=4.10,<5

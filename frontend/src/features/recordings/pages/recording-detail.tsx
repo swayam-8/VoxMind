@@ -20,7 +20,6 @@ import {
   ListChecks,
   MessageSquare,
   Target,
-  Database,
   Globe,
   Radio,
 } from "lucide-react";
@@ -151,29 +150,6 @@ export function RecordingDetailPage() {
     },
   });
 
-  // Reindex vectors mutation
-  const reindexMutation = useMutation({
-    mutationFn: () =>
-      id ? apiClient.reindexRecording(id) : Promise.reject(new Error("No ID")),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recording", id] });
-      toast({
-        title: "Vector Re-indexing Enqueued",
-        description:
-          "Passages are being chunked and embedded with sentence-transformers.",
-        variant: "success",
-      });
-    },
-    onError: (err) => {
-      toast({
-        title: "Reindex Failed",
-        description:
-          err instanceof Error ? err.message : "Could not trigger re-indexing",
-        variant: "danger",
-      });
-    },
-  });
-
   // Toggle action item mutation
   const toggleActionMutation = useMutation({
     mutationFn: ({
@@ -238,6 +214,14 @@ export function RecordingDetailPage() {
   });
 
   const recording = response?.data;
+  const { data: audioTicket } = useQuery({
+    queryKey: ["recording-audio-ticket", id],
+    queryFn: () => apiClient.getAudioTicket(id!),
+    enabled: !!id && !!recording,
+    staleTime: 10 * 60000,
+    refetchInterval: 12 * 60000,
+    retry: 1,
+  });
 
   useEffect(() => {
     if (askMutation.isSuccess && conversationRef.current) {
@@ -480,18 +464,6 @@ export function RecordingDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => reindexMutation.mutate()}
-            disabled={reindexMutation.isPending || segments.length === 0}
-            className="text-sm h-8"
-            title="Refresh search for this transcript"
-          >
-            <Database className="w-5 h-5 mr-1.5 text-accent" />
-            Re-index
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
             onClick={copyTranscriptToClipboard}
             className="text-sm h-8"
             disabled={segments.length === 0}
@@ -568,11 +540,7 @@ export function RecordingDetailPage() {
             onTogglePlay={() => setIsPlaying(!isPlaying)}
             playbackRate={playbackRate}
             onChangePlaybackRate={setPlaybackRate}
-            audioSrc={
-              id
-                ? `/api/v1/recordings/${id}/audio?token=${localStorage.getItem("voxmind_access_token") || ""}`
-                : undefined
-            }
+            audioSrc={id && audioTicket?.data?.ticket ? apiClient.audioUrl(id, audioTicket.data.ticket) : undefined}
             onTimeUpdate={(t) => setCurrentTime(t)}
           />
 

@@ -68,7 +68,7 @@ class RAGService:
         evidence_text = "\n\n".join(evidence_blocks)
 
         system_prompt = (
-            "You are VoxMind AI, an evidence-grounded research assistant. "
+            "You are MeetingBrief AI, an evidence-grounded research assistant. "
             "Your task is to answer the user's question USING EXCLUSIVELY the provided transcript passages.\n\n"
             "Rules:\n"
             "1. Base your answer strictly on the facts stated in the passages.\n"

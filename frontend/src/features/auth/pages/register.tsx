@@ -1,16 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { GoogleSignIn } from "../components/google-sign-in";
 import { AuthLayout } from "../components/auth-layout";
 import { apiClient } from "@/lib/api-client";
 
 export function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +45,8 @@ export function RegisterPage() {
       newErrors.password = "Password must be at least 8 characters.";
     }
 
+    if (new TextEncoder().encode(password).length > 72) newErrors.password = "Use a password of at most 72 UTF-8 bytes.";
+
     if (password !== confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match.";
     }
@@ -69,7 +73,7 @@ export function RegisterPage() {
 
       toast({
         title: "Account Created Successfully",
-        description: `Welcome to VoxMind, ${userName}! Your personal workspace is initialized.`,
+        description: `Welcome to MeetingBrief, ${userName}! Your personal workspace is initialized.`,
         variant: "success",
       });
 
@@ -92,20 +96,22 @@ export function RegisterPage() {
   return (
     <AuthLayout>
       <div className="auth-form">
-        <span className="eyebrow">MAKE ROOM FOR YOUR IDEAS</span>
-        <h1>A fresh perspective.</h1>
+        <span className="eyebrow">START WITH A CLEARER NEXT STEP</span>
+        <h1>Create your account.</h1>
         <p>Create your workspace. Start making more of every conversation.</p>
         {errors.general && (
           <div role="alert" className="auth-error">
             {errors.general}
           </div>
         )}
+        <GoogleSignIn />
         <form onSubmit={handleRegister} noValidate>
           <label className="auth-field" htmlFor="fullName">
             Your name
             <Input
               id="fullName"
               type="text"
+              maxLength={120}
               autoComplete="name"
               placeholder="Alex Morgan"
               value={fullName}
@@ -135,9 +141,9 @@ export function RegisterPage() {
           </label>
           <label className="auth-field" htmlFor="password">
             Password
-            <Input
+            <span className="auth-password-wrap"><Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               placeholder="At least 8 characters"
               value={password}
@@ -145,7 +151,7 @@ export function RegisterPage() {
               disabled={isLoading}
               aria-invalid={!!errors.password}
               aria-describedby={errors.password ? "password-error" : undefined}
-            />
+            /><button type="button" className="auth-password-toggle" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff /> : <Eye />}</button></span>
             {errors.password && (
               <small id="password-error">{errors.password}</small>
             )}
@@ -174,6 +180,7 @@ export function RegisterPage() {
             <ArrowRight size={16} />
           </Button>
         </form>
+        <p className="auth-policy-note">Before uploading recordings, make sure you have permission to process them. Read how we handle your data in <Link to="/privacy">Privacy</Link>.</p>
         <div className="auth-switch">
           Already have a workspace? <Link to="/login">Sign in</Link>
         </div>

@@ -147,8 +147,8 @@ export function UploadDialog({
             Upload Audio Recording
           </DialogTitle>
           <DialogDescription className="text-sm sm:text-sm">
-            Audio is securely uploaded to your local storage volume and queued
-            for native-language transcription.
+            Your recording is uploaded to this service’s servers for transcription.
+            Only upload recordings you have permission to process.
           </DialogDescription>
         </DialogHeader>
 
@@ -259,6 +259,7 @@ export function UploadDialog({
             </label>
             <Input
               id="upload-dialog-field-1"
+              maxLength={300}
               placeholder="e.g. Platform Architecture Review"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -315,7 +316,7 @@ export function UploadDialog({
             className="w-full sm:w-auto"
           >
             <CheckCircle2 className="w-5 h-5 mr-1.5" />
-            Upload & Queue
+            Upload & transcribe
           </Button>
         </DialogFooter>
       </DialogContent>
