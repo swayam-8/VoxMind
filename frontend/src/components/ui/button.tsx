@@ -30,27 +30,28 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer";
+      "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer active:scale-[0.985]";
 
     const variants = {
       default:
-        "bg-accent text-accent-foreground hover:bg-accent-hover active:opacity-90 shadow-xs",
+        "bg-accent text-accent-foreground hover:bg-accent-hover shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_1px_0.5px_rgba(255,255,255,0.2)] border border-accent/80",
       secondary:
-        "bg-surface-2 text-text-primary hover:bg-surface-3 border border-border",
+        "bg-surface-1 text-text-primary hover:bg-surface-2 border border-border shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
       outline:
-        "border border-border text-text-primary hover:bg-surface-2 hover:border-border-subtle",
+        "border border-border text-text-primary hover:bg-surface-2 hover:border-border/80 shadow-[0_1px_1px_rgba(0,0,0,0.02)]",
       ghost: "text-text-secondary hover:text-text-primary hover:bg-surface-2",
-      destructive: "bg-danger text-white hover:opacity-90 shadow-xs",
+      destructive:
+        "bg-danger text-white hover:bg-danger/90 shadow-[0_1px_2px_rgba(0,0,0,0.08)] border border-danger/80",
       subtle:
-        "bg-accent-subtle text-accent hover:opacity-80 border border-accent/20",
-      link: "text-accent underline-offset-4 hover:underline p-0 h-auto",
+        "bg-accent-subtle text-accent hover:bg-accent-subtle/80 border border-accent/15",
+      link: "text-accent underline-offset-4 hover:underline p-0 h-auto active:scale-100",
     };
 
     const sizes = {
-      sm: "min-h-11 px-4 text-sm gap-2",
-      md: "min-h-12 px-5 text-sm gap-2.5",
-      lg: "min-h-13 px-6 text-base gap-2.5",
-      icon: "h-12 w-12 min-w-12 p-0",
+      sm: "min-h-9 px-3 text-xs gap-1.5 rounded-md",
+      md: "min-h-10 px-4 text-sm gap-2 rounded-lg",
+      lg: "min-h-11 px-5 text-sm font-medium gap-2.5 rounded-lg",
+      icon: "h-10 w-10 min-w-10 p-0 rounded-lg",
     };
 
     return (
@@ -70,7 +71,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         {...props}
       >
-        {isLoading && <Loader2 className="w-5 h-5 animate-spin shrink-0" />}
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
         {children}
       </button>
     );

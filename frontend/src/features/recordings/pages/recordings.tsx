@@ -4,18 +4,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic,
   Search,
-  UploadCloud,
+  Upload,
   LayoutGrid,
   List,
   Filter,
   ArrowUpDown,
-  Clock,
-  Trash2,
   Play,
-  RotateCcw,
   RotateCw,
+  RotateCcw,
   AlertCircle,
   FolderOpen,
+  MoreHorizontal,
+  FileAudio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +36,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UploadDialog } from "@/features/recordings/components/upload-dialog";
 import { toast } from "@/hooks/use-toast";
 import { apiClient, type ApiRecording } from "@/lib/api-client";
+import { PageTransition } from "@/components/layout/page-transition";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -67,14 +74,14 @@ export function RecordingsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ApiRecording | null>(null);
 
-  // Query workspace collections for filtering
+  // Collections query
   const { data: collectionsRes } = useQuery({
     queryKey: ["collections"],
     queryFn: () => apiClient.getCollections(),
   });
   const collections = collectionsRes?.data || [];
 
-  // Real backend query via TanStack Query with live polling during processing
+  // Recordings query with live status polling
   const {
     data: response,
     isLoading,
@@ -106,7 +113,7 @@ export function RecordingsPage() {
         (r) =>
           r.status === "queued" ||
           r.status === "processing" ||
-          r.status === "transcribing",
+          r.status === "transcribing"
       );
       return hasActive ? 2500 : false;
     },
@@ -119,18 +126,14 @@ export function RecordingsPage() {
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
       toast({
         title: "Transcription Re-enqueued",
-        description:
-          "The background queue has scheduled speech-to-text processing.",
+        description: "The background queue has scheduled speech-to-text processing.",
         variant: "success",
       });
     },
     onError: (err) => {
       toast({
         title: "Retry Failed",
-        description:
-          err instanceof Error
-            ? err.message
-            : "Could not re-enqueue transcription",
+        description: err instanceof Error ? err.message : "Could not re-enqueue transcription",
         variant: "danger",
       });
     },
@@ -151,8 +154,7 @@ export function RecordingsPage() {
     onError: (err) => {
       toast({
         title: "Deletion Failed",
-        description:
-          err instanceof Error ? err.message : "Could not delete recording",
+        description: err instanceof Error ? err.message : "Could not delete recording",
         variant: "danger",
       });
     },
@@ -162,21 +164,23 @@ export function RecordingsPage() {
   const totalCount = response?.meta?.total || 0;
 
   return (
-    <div className="feature-page space-y-6">
-      {/* Header and Actions */}
+    <PageTransition className="space-y-6">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
-          <p className="eyebrow mb-3">THE CONVERSATION ARCHIVE</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold tracking-tight text-text-primary">
-              Your recording library
+          <p className="eyebrow text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+            THE CONVERSATION ARCHIVE
+          </p>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-semibold text-text-primary tracking-tight">
+              Meetings
             </h1>
             <Badge variant="outline" className="text-xs font-mono">
               {totalCount} Total
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-text-secondary">
-            Meetings, interviews, and the ideas in between. All in one place.
+          <p className="mt-0.5 text-sm text-text-secondary">
+            Manage, review, and act on your recorded meeting intelligence.
           </p>
         </div>
 
@@ -185,43 +189,48 @@ export function RecordingsPage() {
             variant="default"
             size="sm"
             onClick={() => setUploadOpen(true)}
-            className="shadow-xs"
+            className="shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
           >
-            <UploadCloud className="w-5 h-5 mr-1.5" />
-            Upload Audio
+            <Upload className="w-4 h-4 mr-1.5" />
+            Upload Meeting
           </Button>
         </div>
       </div>
 
-      {/* Filter and Control Bar */}
-      <div className="recordings-toolbar">
-        {/* Search Input */}
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-2.5 top-2 h-5 w-5 text-text-muted" />
+      {/* Toolbar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative flex-1 min-w-0 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <Input
             placeholder="Search by title or filename..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search recordings"
-            className="pl-11 bg-surface-1 border-border text-sm w-full"
+            className="pl-9 h-9 text-xs"
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-text-muted hover:text-text-primary"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
-        {/* Filter Dropdowns & View Mode */}
-        <div className="recording-filters">
+        {/* Filters and Controls */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Status Filter */}
-          <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-36">
+          <div className="w-32">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger
-                aria-label="Filter by status"
-                className="text-sm w-full"
-              >
-                <Filter className="w-5 h-5 mr-1 text-text-muted shrink-0" />
+              <SelectTrigger aria-label="Filter by status" className="h-9 text-xs">
+                <Filter className="w-3.5 h-3.5 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="ready">Completed (Indexed)</SelectItem>
+                <SelectItem value="ready">Completed</SelectItem>
                 <SelectItem value="transcribing">Transcribing</SelectItem>
                 <SelectItem value="queued">Queued</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
@@ -230,7 +239,7 @@ export function RecordingsPage() {
           </div>
 
           {/* Collection Filter */}
-          <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-40">
+          <div className="w-36">
             <Select
               value={collectionFilter}
               onValueChange={(val) => {
@@ -243,11 +252,8 @@ export function RecordingsPage() {
                 setSearchParams(next);
               }}
             >
-              <SelectTrigger
-                aria-label="Filter by collection"
-                className="text-sm w-full"
-              >
-                <FolderOpen className="w-5 h-5 mr-1 text-text-muted shrink-0" />
+              <SelectTrigger aria-label="Filter by collection" className="h-9 text-xs">
+                <FolderOpen className="w-3.5 h-3.5 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Collection" />
               </SelectTrigger>
               <SelectContent>
@@ -262,7 +268,7 @@ export function RecordingsPage() {
           </div>
 
           {/* Sort Control */}
-          <div className="w-full xs:w-[calc(50%-0.25rem)] sm:w-36">
+          <div className="w-36">
             <Select
               value={sortBy}
               onValueChange={(val) => {
@@ -270,16 +276,13 @@ export function RecordingsPage() {
                 setOrder(val === "title" ? "asc" : "desc");
               }}
             >
-              <SelectTrigger
-                aria-label="Sort recordings"
-                className="text-sm w-full"
-              >
-                <ArrowUpDown className="w-5 h-5 mr-1 text-text-muted shrink-0" />
+              <SelectTrigger aria-label="Sort recordings" className="h-9 text-xs">
+                <ArrowUpDown className="w-3.5 h-3.5 mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="created_at">Date Created</SelectItem>
-                <SelectItem value="duration_seconds">Audio Duration</SelectItem>
+                <SelectItem value="duration_seconds">Duration</SelectItem>
                 <SelectItem value="file_size_bytes">File Size</SelectItem>
                 <SelectItem value="title">Title (A-Z)</SelectItem>
               </SelectContent>
@@ -287,43 +290,46 @@ export function RecordingsPage() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center border border-border rounded-lg p-0.5 bg-surface-2 ml-auto xs:ml-0">
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon"
+          <div className="inline-flex rounded-md border border-border bg-surface-2 p-0.5 ml-auto">
+            <button
+              type="button"
               onClick={() => setViewMode("list")}
-              className="h-7 w-7 rounded-md"
+              className={`p-1.5 rounded transition-all ${
+                viewMode === "list"
+                  ? "bg-surface-1 text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
               aria-label="List view"
             >
-              <List className="h-5 w-5" />
-            </Button>
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => setViewMode("grid")}
-              className="h-7 w-7 rounded-md"
+              className={`p-1.5 rounded transition-all ${
+                viewMode === "grid"
+                  ? "bg-surface-1 text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
               aria-label="Grid view"
             >
-              <LayoutGrid className="h-5 w-5" />
-            </Button>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content Area */}
       {isError ? (
-        /* Real Error State */
-        <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-danger/30 bg-surface-1">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-subtle text-danger border border-danger/20 mb-3">
-            <AlertCircle className="h-6 w-6" />
+        <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border border-danger/30 bg-surface-1">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-danger-subtle text-danger mb-3">
+            <AlertCircle className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-bold text-text-primary">
+          <h3 className="text-sm font-semibold text-text-primary">
             Failed to Load Recordings
           </h3>
-          <p className="max-w-sm mt-1 text-sm text-text-secondary">
-            {error instanceof Error
-              ? error.message
-              : "Could not connect to the backend REST API."}
+          <p className="max-w-sm mt-1 text-xs text-text-secondary">
+            {error instanceof Error ? error.message : "Could not connect to the backend API."}
           </p>
           <Button
             variant="outline"
@@ -331,41 +337,31 @@ export function RecordingsPage() {
             onClick={() => refetch()}
             className="mt-4"
           >
-            <RotateCcw className="w-5 h-5 mr-1" /> Retry Connection
+            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Retry Connection
           </Button>
         </div>
       ) : isLoading ? (
-        /* Real Skeleton Loading State */
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="p-3.5 rounded-xl border border-border bg-surface-1 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3 w-1/2">
-                <Skeleton className="h-8.5 w-8.5 rounded-lg shrink-0" />
-                <div className="space-y-1.5 w-full">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
+        <div className="rounded-lg border border-border bg-surface-1 p-4 space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <div className="space-y-1.5 flex-1">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-3 w-1/4" />
               </div>
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-6 w-16 rounded-full" />
-                <Skeleton className="h-7 w-7 rounded-md" />
-              </div>
+              <Skeleton className="h-6 w-20 rounded" />
             </div>
           ))}
         </div>
       ) : recordings.length === 0 ? (
-        /* Genuine Empty / No Results State */
-        <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-border bg-surface-1">
+        <div className="flex flex-col items-center justify-center p-14 text-center rounded-lg border border-dashed border-border bg-surface-1">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-text-muted mb-3 border border-border">
-            <Mic className="h-6 w-6" />
+            <Mic className="h-5 w-5" />
           </div>
           <h3 className="text-sm font-semibold text-text-primary">
             {search ? `No recordings match "${search}"` : "No recordings yet"}
           </h3>
-          <p className="max-w-sm mt-1 text-sm text-text-secondary">
+          <p className="max-w-sm mt-1 text-xs text-text-secondary">
             {search
               ? "Try adjusting your search terms or filter settings."
               : "Upload an audio recording to initiate transcription and AI insight extraction."}
@@ -380,208 +376,208 @@ export function RecordingsPage() {
           </Button>
         </div>
       ) : viewMode === "list" ? (
-        /* List Presentation View */
-        <div className="space-y-2">
-          {recordings.map((rec) => (
-            <div
-              key={rec.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all gap-3 group"
-            >
-              <div className="flex items-start sm:items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent group-hover:bg-accent-subtle transition-colors shrink-0 mt-0.5 sm:mt-0">
-                  <Mic className="h-4.5 w-4.5" />
-                </div>
-                <div className="min-w-0">
-                  <Link
-                    to={`/app/recordings/${rec.id}`}
-                    className="text-sm sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline block truncate"
+        /* Attio-Style Records Table */
+        <div className="rounded-lg border border-border bg-surface-1 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-border bg-surface-2/60 text-text-muted font-medium">
+                  <th className="py-2.5 px-4 font-medium">Meeting Title</th>
+                  <th className="py-2.5 px-3 font-medium">Recorded Date</th>
+                  <th className="py-2.5 px-3 font-medium">Duration</th>
+                  <th className="py-2.5 px-3 font-medium">Status</th>
+                  <th className="py-2.5 px-3 font-medium">Collection</th>
+                  <th className="py-2.5 px-4 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {recordings.map((rec) => (
+                  <tr
+                    key={rec.id}
+                    className="group hover:bg-surface-2/60 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      // Don't navigate if clicking action button or dropdown
+                      if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("a")) return;
+                      window.location.assign(`/app/recordings/${rec.id}`);
+                    }}
                   >
-                    {rec.title}
-                  </Link>
-                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-text-muted">
-                    {rec.source_provider && (
-                      <Badge variant="outline">
-                        {rec.source_provider === "google-meet"
-                          ? "Google Meet"
-                          : rec.source_provider === "zoom"
-                            ? "Zoom"
-                            : "Webex"}
-                      </Badge>
-                    )}
-                    {rec.collection_name && (
-                      <>
-                        <span className="flex items-center gap-1 text-text-secondary">
-                          <FolderOpen className="h-5 w-5 text-accent" />
+                    {/* Meeting Title Column */}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-7 h-7 rounded-md bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent group-hover:bg-accent-subtle transition-colors shrink-0">
+                          <Play size={11} fill="currentColor" />
+                        </span>
+                        <div className="min-w-0">
+                          <Link
+                            to={`/app/recordings/${rec.id}`}
+                            className="font-medium text-text-primary group-hover:text-accent transition-colors hover:underline block truncate max-w-xs sm:max-w-md"
+                          >
+                            {rec.title}
+                          </Link>
+                          <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-0.5">
+                            <span className="truncate">{rec.filename}</span>
+                            {rec.source_provider && (
+                              <span className="capitalize text-[10px] px-1 py-0 rounded bg-surface-2">
+                                {rec.source_provider}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Date */}
+                    <td className="py-3 px-3 text-text-secondary whitespace-nowrap">
+                      {formatDate(rec.created_at)}
+                    </td>
+
+                    {/* Duration */}
+                    <td className="py-3 px-3 font-mono text-text-secondary whitespace-nowrap">
+                      {formatDuration(rec.duration_seconds)}
+                    </td>
+
+                    {/* Status */}
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      {["ready", "completed"].includes(rec.status) ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
+                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                          Ready
+                        </span>
+                      ) : ["transcribing", "processing"].includes(rec.status) ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning">
+                          <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+                          Processing…
+                        </span>
+                      ) : rec.status === "queued" ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-text-muted">
+                          <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />
+                          Queued
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-danger">
+                          <span className="w-1.5 h-1.5 rounded-full bg-danger" />
+                          Failed
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Collection */}
+                    <td className="py-3 px-3 text-text-secondary whitespace-nowrap">
+                      {rec.collection_name ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary bg-surface-2 px-2 py-0.5 rounded border border-border/80">
+                          <FolderOpen size={11} className="text-accent" />
                           {rec.collection_name}
                         </span>
-                        <span>•</span>
-                      </>
-                    )}
-                    <span className="flex items-center gap-1 font-mono">
-                      <Clock className="h-5 w-5" />
-                      {formatDuration(rec.duration_seconds)}
-                    </span>
-                    <span>•</span>
-                    <span>{formatDate(rec.created_at)}</span>
-                    <span>•</span>
-                    <span className="font-mono text-xs">
-                      {(rec.file_size_bytes / (1024 * 1024)).toFixed(1)} MB
-                    </span>
-                  </div>
-                </div>
-              </div>
+                      ) : (
+                        <span className="text-text-muted">—</span>
+                      )}
+                    </td>
 
-              {/* Status and Action Buttons */}
-              <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                <div className="flex items-center gap-1.5">
-                  {(rec.status === "ready" || rec.status === "completed") && (
-                    <Badge variant="success" className="font-mono text-xs">
-                      Completed
-                    </Badge>
-                  )}
-                  {(rec.status === "transcribing" ||
-                    rec.status === "processing") && (
-                    <Badge
-                      variant="warning"
-                      className="font-mono text-xs animate-pulse"
-                    >
-                      Processing...
-                    </Badge>
-                  )}
-                  {rec.status === "queued" && (
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      Queued
-                    </Badge>
-                  )}
-                  {rec.status === "failed" && (
-                    <Badge variant="danger" className="font-mono text-xs">
-                      Failed
-                    </Badge>
-                  )}
-                </div>
+                    {/* Actions */}
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        {rec.status === "failed" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              retryMutation.mutate(rec.id);
+                            }}
+                            isLoading={retryMutation.isPending}
+                            className="h-7 text-xs font-medium text-warning border-warning/30 hover:bg-warning-subtle"
+                            title="Retry Transcription"
+                          >
+                            <RotateCw className="w-3.5 h-3.5 mr-1" /> Retry
+                          </Button>
+                        )}
 
-                <div className="flex items-center gap-1">
-                  {rec.status === "failed" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => retryMutation.mutate(rec.id)}
-                      isLoading={retryMutation.isPending}
-                      className="h-7 text-sm font-medium text-warning border-warning/30 hover:bg-warning-subtle"
-                      title="Retry Transcription"
-                    >
-                      <RotateCw className="w-5 h-5 mr-1" /> Retry
-                    </Button>
-                  )}
+                        <Link to={`/app/recordings/${rec.id}`} onClick={(e) => e.stopPropagation()}>
+                          <Button variant="secondary" size="sm" className="h-7 text-xs font-medium">
+                            <Play className="w-3 h-3 mr-1 text-accent" /> Open
+                          </Button>
+                        </Link>
 
-                  <Link to={`/app/recordings/${rec.id}`}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 text-sm font-medium"
-                    >
-                      <Play className="w-5 h-5 mr-1 text-accent" /> Workspace
-                    </Button>
-                  </Link>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteTarget(rec)}
-                    className="h-7 w-7 text-text-muted hover:text-danger"
-                    aria-label="Delete recording"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-text-muted hover:text-text-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal size={14} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40 text-xs">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/app/recordings/${rec.id}`);
+                                toast({ title: "Link copied", description: "Meeting link copied to clipboard." });
+                              }}
+                            >
+                              Copy link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTarget(rec)}
+                              className="text-danger focus:text-danger"
+                            >
+                              Delete recording
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
-        /* Grid Presentation View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        /* Attio-Style Grid View */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {recordings.map((rec) => (
             <div
               key={rec.id}
-              className="flex flex-col justify-between p-4 rounded-xl bg-surface-1 border border-border hover:border-accent/40 transition-all space-y-3.5 group"
+              className="group rounded-lg border border-border bg-surface-1 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-accent/40 transition-all flex flex-col justify-between space-y-3"
             >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="h-8.5 w-8.5 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent transition-colors">
-                    <Mic className="h-5 w-5" />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {(rec.status === "ready" || rec.status === "completed") && (
-                      <Badge variant="success" className="font-mono text-xs">
-                        Completed
-                      </Badge>
-                    )}
-                    {(rec.status === "transcribing" ||
-                      rec.status === "processing") && (
-                      <Badge
-                        variant="warning"
-                        className="font-mono text-xs animate-pulse"
-                      >
-                        Processing...
-                      </Badge>
-                    )}
-                    {rec.status === "queued" && (
-                      <Badge variant="secondary" className="font-mono text-xs">
-                        Queued
-                      </Badge>
-                    )}
-                    {rec.status === "failed" && (
-                      <Badge variant="danger" className="font-mono text-xs">
-                        Failed
-                      </Badge>
-                    )}
-                  </div>
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="w-8 h-8 rounded-md bg-surface-2 border border-border flex items-center justify-center text-text-muted group-hover:text-accent group-hover:bg-accent-subtle transition-colors shrink-0">
+                    <FileAudio size={16} />
+                  </span>
+                  <Badge
+                    variant={
+                      ["ready", "completed"].includes(rec.status)
+                        ? "success"
+                        : ["transcribing", "processing"].includes(rec.status)
+                        ? "warning"
+                        : rec.status === "failed"
+                        ? "danger"
+                        : "secondary"
+                    }
+                    className="text-[10px] capitalize"
+                  >
+                    {rec.status === "ready" ? "Ready" : rec.status}
+                  </Badge>
                 </div>
 
-                <div>
-                  <Link
-                    to={`/app/recordings/${rec.id}`}
-                    className="text-sm sm:text-sm font-semibold text-text-primary group-hover:text-accent transition-colors hover:underline line-clamp-2"
-                  >
-                    {rec.title}
-                  </Link>
-                  <p className="text-xs text-text-muted mt-0.5 truncate">
-                    {rec.filename}
-                  </p>
-                </div>
+                <Link
+                  to={`/app/recordings/${rec.id}`}
+                  className="font-medium text-sm text-text-primary group-hover:text-accent transition-colors hover:underline block mt-2.5 line-clamp-2"
+                >
+                  {rec.title}
+                </Link>
+
+                <p className="text-xs text-text-muted mt-1 truncate">
+                  {rec.filename}
+                </p>
               </div>
 
-              <div className="pt-2.5 border-t border-border/50 space-y-2.5">
-                <div className="flex items-center justify-between text-xs text-text-muted">
-                  <span className="flex items-center gap-1 font-mono">
-                    <Clock className="h-5 w-5" />
-                    {formatDuration(rec.duration_seconds)}
-                  </span>
-                  <span>{formatDate(rec.created_at)}</span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <Link to={`/app/recordings/${rec.id}`} className="flex-1">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="w-full text-sm h-7"
-                    >
-                      <Play className="w-5 h-5 mr-1 text-accent" /> Open
-                      Workspace
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteTarget(rec)}
-                    className="h-7 w-7 text-text-muted hover:text-danger"
-                    aria-label="Delete recording"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
-                </div>
+              <div className="pt-3 border-t border-border/80 flex items-center justify-between text-xs text-text-muted">
+                <span className="font-mono">{formatDuration(rec.duration_seconds)}</span>
+                <span>{formatDate(rec.created_at)}</span>
               </div>
             </div>
           ))}
@@ -593,20 +589,16 @@ export function RecordingsPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full border-border bg-surface-1 p-4 sm:p-6">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">
-              Delete Audio Recording?
-            </DialogTitle>
-            <DialogDescription className="text-sm sm:text-sm">
-              Are you sure you want to permanently delete "{deleteTarget?.title}
-              "? All generated transcripts, decisions, and files will be
-              removed.
+            <DialogTitle>Delete recording?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{deleteTarget?.title}&rdquo;? This will permanently remove the audio file, transcript, and AI summaries.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-2">
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setDeleteTarget(null)}
             >
@@ -615,25 +607,22 @@ export function RecordingsPage() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() =>
-                deleteTarget && deleteMutation.mutate(deleteTarget.id)
-              }
               isLoading={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              Delete Recording
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Audio Upload Dialog */}
       <UploadDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        onSuccess={() =>
-          queryClient.invalidateQueries({ queryKey: ["recordings"] })
-        }
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["recordings"] });
+        }}
       />
-    </div>
+    </PageTransition>
   );
 }

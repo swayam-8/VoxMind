@@ -25,6 +25,7 @@ router.get('/', validateRequest({ query: listRecordingsSchema }), RecordingsCont
 router.post('/', write, uploadRateLimit, uploadAudio.single('file'), validateAudioContent, RecordingsController.upload);
 router.post('/upload', write, uploadRateLimit, uploadAudio.single('file'), validateAudioContent, RecordingsController.upload);
 
+router.get('/action-items', RecordingsController.listActionItems);
 router.get('/:id', RecordingsController.getById);
 router.patch('/:id', write, validateRequest({ body: updateRecordingSchema }), RecordingsController.update);
 router.put('/:id', write, validateRequest({ body: updateRecordingSchema }), RecordingsController.update);

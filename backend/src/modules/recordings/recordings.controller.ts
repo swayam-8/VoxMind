@@ -540,6 +540,54 @@ export class RecordingsController {
     }
   }
 
+
+  static async listActionItems(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.workspaceId!;
+      const status = req.query.status as string | undefined;
+      const search = req.query.search as string | undefined;
+
+      const filter: any = { workspaceId };
+      if (status && status !== 'all') {
+        filter.status = status;
+      }
+      if (search && search.trim()) {
+        filter.task = { $regex: escapeSearch(search.trim()), $options: 'i' };
+      }
+
+      const actionItems = await ActionItem.find(filter).sort({ createdAt: -1 }).lean();
+      const recordingIds = [...new Set(actionItems.map((a: any) => a.recordingId))];
+      const recordings = await Recording.find({ _id: { $in: recordingIds } }, '_id title createdAt').lean();
+      const recMap = new Map(recordings.map((r: any) => [String(r._id), r]));
+
+      const payload = actionItems.map((item: any) => {
+        const rec = recMap.get(String(item.recordingId));
+        return {
+          id: item._id,
+          recording_id: item.recordingId,
+          recording_title: rec?.title || 'Untitled Meeting',
+          recording_date: rec?.createdAt ? new Date(rec.createdAt).toISOString() : null,
+          task: item.task,
+          assignee: item.assignee,
+          due_date: item.dueDate,
+          completed: item.status === 'completed',
+          source_timestamp: item.sourceTimestamp ?? null,
+          status: item.status,
+          priority: item.priority || 'medium',
+          created_at: item.createdAt,
+        };
+      });
+
+      return res.json({
+        success: true,
+        data: payload,
+        meta: { total: payload.length },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async update(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;

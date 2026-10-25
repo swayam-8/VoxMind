@@ -57,11 +57,16 @@ export interface ApiSummary {
 export interface ApiActionItem {
   id: string
   recording_id: string
+  recording_title?: string
+  recording_date?: string | null
   task: string
   assignee?: string | null
   due_date?: string | null
   completed: boolean
   source_timestamp?: number | null
+  status?: string
+  priority?: "low" | "medium" | "high"
+  created_at?: string
 }
 
 export interface ApiRecordingQuestion {
@@ -523,6 +528,17 @@ class ApiClient {
       method: "PATCH",
       body: JSON.stringify(completed !== undefined ? { completed } : {}),
     })
+  }
+
+  async getActionItems(params?: {
+    status?: string
+    search?: string
+  }): Promise<ApiResponse<ApiActionItem[]>> {
+    const query = new URLSearchParams()
+    if (params?.status && params.status !== "all") query.set("status", params.status)
+    if (params?.search) query.set("search", params.search)
+    const qs = query.toString()
+    return this.get<ApiActionItem[]>(`/recordings/action-items${qs ? `?${qs}` : ""}`)
   }
 
   async search(

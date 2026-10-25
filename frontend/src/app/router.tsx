@@ -30,6 +30,11 @@ const RecordingDetailPage = lazy(() =>
     default: m.RecordingDetailPage,
   })),
 );
+const ActionsPage = lazy(() =>
+  import("@/features/actions/pages/actions").then((m) => ({
+    default: m.ActionsPage,
+  })),
+);
 const AskPage = lazy(() =>
   import("@/features/intelligence/pages/ask").then((m) => ({
     default: m.AskPage,
@@ -94,6 +99,7 @@ export function AppRoutes() {
           <Route path="/app/overview" element={<OverviewPage />} />
           <Route path="/app/recordings" element={<RecordingsPage />} />
           <Route path="/app/recordings/:id" element={<RecordingDetailPage />} />
+          <Route path="/app/actions" element={<ActionsPage />} />
           <Route path="/app/collections" element={<CollectionsPage />} />
           <Route path="/app/ask" element={<AskPage />} />
           <Route path="/app/api" element={<IntegrationsPage />} />

@@ -19,11 +19,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           disabled={disabled}
           className={cn(
-            "flex h-12 min-h-12 w-full rounded-lg border bg-surface-1 px-3.5 py-1 text-sm text-text-primary placeholder:text-text-muted shadow-xs transition-colors",
+            "flex h-10 min-h-10 w-full rounded-md border bg-surface-1 px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-150",
             "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-            "focus-visible:outline-none focus:border-accent focus:ring-1 focus:ring-ring",
+            "focus-visible:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            error ? "border-danger focus:ring-danger/40" : "border-border",
+            error ? "border-danger focus:border-danger focus:ring-danger/25" : "border-border hover:border-border/80",
             className,
           )}
           ref={ref}
@@ -32,7 +32,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {helperText && (
           <p
             className={cn(
-              "mt-1 text-sm",
+              "mt-1.5 text-xs",
               error ? "text-danger" : "text-text-muted",
             )}
           >
