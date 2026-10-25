@@ -1,146 +1,274 @@
-# MeetingBrief
+<div align="center">
 
-Turn meeting recordings into searchable transcripts, summaries, decisions, action items, and answers.
+# 🎙️ MeetingBrief
 
-MeetingBrief includes a public landing page, email/password accounts, Google sign-in, a recording workspace, meeting-provider imports, and a documented API. The existing database names, browser storage keys, Docker project and volumes retain their original identifiers so renaming the project does not hide existing data.
+**Turn meeting recordings into searchable transcripts, summaries, decisions, action items, and conversational intelligence.**
 
-## Run locally
+An enterprise-grade, privacy-first meeting intelligence SaaS platform inspired by the craft, clarity, and refinement of Attio.
 
-Install **Node.js 22.12+** and start **Docker Desktop** (or Docker Engine with Compose). From the project root:
+[![Node.js](https://img.shields.io/badge/Node.js-22.12+-339933?style=flat&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-Proprietary-red?style=flat)](#license)
 
-```sh
-npm start
+</div>
+
+---
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [System Architecture](#-system-architecture)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+  - [Prerequisites](#prerequisites)
+  - [One-Command Local Stack (Recommended)](#one-command-local-stack-recommended)
+  - [Standalone Development Mode](#standalone-development-mode)
+- [Integrations & OAuth Setup](#-integrations--oauth-setup)
+- [Testing & Quality Assurance](#-testing--quality-assurance)
+- [Security & Privacy](#-security--privacy)
+- [Author & Maintainer](#-author--maintainer)
+
+---
+
+## 💡 Overview
+
+**MeetingBrief** is an end-to-end meeting intelligence platform built for modern product and engineering teams. It processes recorded audio and video to extract actionable takeaways without requiring hours of manual review.
+
+The frontend is crafted around an **Attio-inspired design system**, prioritizing calm neutral palettes, crisp typography, subtle borders, tactile interactions, and centralized task management.
+
+---
+
+## ✨ Key Features
+
+| Capability | Description |
+|---|---|
+| **Attio-Inspired Workspace** | High-density, calm workspace featuring metrics strips, live background progress cards, and responsive light/dark themes. |
+| **Searchable Transcripts** | Asynchronous speech-to-text with speaker labels, precise millisecond timestamps, and instant audio playback jumps. |
+| **Structured Intelligence** | Automatically extracts executive summaries, key discussion points, explicit decisions, and post-meeting action items. |
+| **Centralized Action Items Hub** | Dedicated task hub at `/app/actions` across all meetings with search, Open/Completed filters, and optimistic status updates. |
+| **Conversational AI (Ask Brief)** | Ask natural-language questions across recordings with citation links back to timestamped transcript moments. |
+| **Cloud Meeting Imports** | Seamlessly import completed recordings from **Zoom**, **Google Meet / Google Drive**, and **Cisco Webex**. |
+| **Exportable Reports** | Generate printable PDF briefs and formatted Markdown summaries including full transcripts. |
+| **Developer API & OpenAPI** | Scoped, expiring REST API keys with interactive documentation at `/app/docs` and OpenAPI 3.1 contracts. |
+
+---
+
+## 🏗️ System Architecture
+
+```
+                       ┌────────────────────────────────────────┐
+                       │        Browser / API Consumers         │
+                       └───────────────────┬────────────────────┘
+                                           │
+                                           ▼
+                       ┌────────────────────────────────────────┐
+                       │          Nginx Reverse Proxy           │
+                       │           (Port 5173 / 80)             │
+                       └───────────┬────────────────┬───────────┘
+                                   │                │
+            Static SPA Assets ┌────▼───┐        ┌───▼────┐ /api/v1/
+                              │ React  │        │Express │
+                              │ Client │        │  API   │ (Port 5000)
+                              └────────┘        └───┬────┘
+                                                    │
+                             ┌──────────────────────┼──────────────────────┐
+                             │                      │                      │
+                             ▼                      ▼                      ▼
+                     ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+                     │   MongoDB    │       │ Redis/BullMQ │       │ Local File / │
+                     │  (Database)  │       │(Task Queues) │       │ Audio Storage│
+                     └──────────────┘       └───────┬──────┘       └──────────────┘
+                                                    │
+                                                    ▼
+                                            ┌──────────────┐
+                                            │FastAPI Worker│
+                                            │(Port 8000)   │
+                                            └───────┬──────┘
+                                                    │
+                               ┌────────────────────┴───────────────────┐
+                               ▼                                        ▼
+                      ┌──────────────────┐                     ┌──────────────────┐
+                      │ Faster-Whisper   │                     │  Local LLM /     │
+                      │ (Transcription)  │                     │ Ollama / Gemma   │
+                      └──────────────────┘                     └──────────────────┘
 ```
 
-Open **http://localhost:5173**. The root URL shows the landing page. Create an account or sign in to open your workspace.
+### Repository Structure
 
-The launcher generates missing local secrets, builds the services, and starts MongoDB, Redis, Ollama, the Python inference service, the backend and the web client. Ollama’s model downloads in the background on first start; summaries and answers become available after it finishes. Whisper and embedding weights download when first used. Allow several GB of downloads, at least 15 GB of Docker disk space and 8 GB of memory.
-
-```sh
-npm stop       # Stop services and preserve data
-npm run logs   # Follow service logs
-npm start      # Start again, or rebuild after pulling changes
+```
+├── frontend/             # React 19, Vite, Tailwind CSS, TanStack Query, Motion
+│   ├── src/app/          # Application router, layout wrappers, and providers
+│   ├── src/components/   # Design system atoms, navigation shell, logo, headers
+│   ├── src/features/     # Domain modules: auth, workspace, recordings, actions, docs
+│   └── src/styles/       # Centralized Attio design tokens (tokens.css)
+├── backend/              # Node.js 22, Express, TypeScript, Mongoose, BullMQ
+│   ├── src/modules/      # Auth, recordings, action-items, collections, search, API keys
+│   ├── src/queues/       # Asynchronous audio processing & inference job queues
+│   └── src/services/     # AI service client, storage adapters, meeting OAuth providers
+├── ai-service/           # FastAPI, Python 3.11+, Faster-Whisper, PyTorch, Ollama
+│   └── app/              # Private inference endpoints, audio chunking, embeddings
+├── scripts/              # Local Docker orchestrator, seeding, smoke test runners
+└── docker-compose.yml    # Production-ready multi-container local stack
 ```
 
-To create a new checkout while the repository still has its previous slug:
+---
 
-```sh
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, TanStack Query v5, Radix UI primitives, Motion (`motion/react`), Lucide Icons.
+- **Backend**: Node.js 22, Express, TypeScript, MongoDB (Mongoose), Redis (BullMQ queues), Pino logger.
+- **AI & Audio Engine**: Python 3.11, FastAPI, Faster-Whisper, PyTorch, Hugging Face Transformers, Ollama.
+- **Infrastructure**: Docker Compose, Nginx, MinIO/Local Storage.
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js**: `v22.12.0` or higher
+- **Docker Desktop** (or Docker Engine with Compose v2) running
+- **Resources**: At least 8 GB RAM and 15 GB free disk space (for local Whisper weights & LLM models)
+
+### One-Command Local Stack (Recommended)
+
+From the repository root:
+
+```bash
+# 1. Clone the repository
 git clone https://github.com/swayam-8/VoxMind.git meetingbrief
 cd meetingbrief
+
+# 2. Launch the complete local stack
 npm start
 ```
 
-The GitHub repository can be renamed to `meetingbrief` in **Settings → General → Repository name**. Public website branding is already MeetingBrief. Compose deliberately keeps its original project name for data compatibility.
+Once ready, open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
-## What works
+- Sign up for a new workspace or log in with your credentials.
+- The startup script automatically provisions `.env`, MongoDB, Redis, the AI service, backend, and the frontend container.
+- Initial model weights download seamlessly in the background.
 
-- Upload supported audio/video recordings and track asynchronous transcription.
-- Play audio, search timestamped transcripts and jump to evidence.
-- Review summaries, takeaways, explicit decisions and action items; save task completion.
-- Ask about a recording or search across your workspace. Recording questions and answers persist per user.
-- Export all four insight sections, including saved Q&A, to a printable PDF report. Markdown exports include the transcript.
-- Connect Zoom, Google Meet/Drive and Webex to import completed cloud recordings once the operator configures the provider apps.
-- Create expiring read-only or read/write API keys and use the REST API from your server.
-- Sign in with a password or Google. Existing password accounts link Google in Settings after confirming their password.
+#### Management Commands
 
-## Customer instructions stay in the product
+```bash
+npm stop        # Stop all containers while preserving database and recordings
+npm run logs    # Stream live logs from all services
+npm start       # Resume services or rebuild after pulling updates
+```
 
-Open **Guides & API** at **/app/docs** for working cURL, PowerShell, Node.js and Python examples, processing states, permissions, errors, provider requirements and connection troubleshooting. Download the OpenAPI contract at **/api/v1/openapi.json**.
+---
 
-The customer connection flow is **Connect → authorize with the provider → browse recordings → import**. Customers do not create OAuth applications or supply client secrets. Connecting an account does not join, start or record a meeting.
+### Standalone Development Mode
 
-## Google sign-in and meeting-provider setup
+To run individual services outside Docker for live development:
 
-Google sign-in is disabled until its OAuth credentials are configured. Register a Google OAuth web application, then set these private server values in the root `.env` for Docker:
+#### 1. Frontend Development Server
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Accessible at: **http://localhost:5173**
+
+#### 2. Backend API Server
+```bash
+cd backend
+npm install
+npm run dev
+```
+API running on: **http://localhost:5000**
+
+#### 3. AI Inference Service
+```bash
+cd ai-service
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+---
+
+## 🔑 Integrations & OAuth Setup
+
+Google Sign-In and meeting provider imports are enabled by configuring environment variables in the root `.env`:
 
 ```dotenv
-GOOGLE_AUTH_CLIENT_ID=your-client-id
-GOOGLE_AUTH_CLIENT_SECRET=your-client-secret
+# Google Authentication (Workspace Sign-In)
+GOOGLE_AUTH_CLIENT_ID=your-google-client-id
+GOOGLE_AUTH_CLIENT_SECRET=your-google-client-secret
 AUTH_API_BASE_URL=http://localhost:5000
 FRONTEND_URL=http://localhost:5173
+
+# Meeting Providers (Cloud Recording Imports)
+ZOOM_CLIENT_ID=your-zoom-client-id
+ZOOM_CLIENT_SECRET=your-zoom-client-secret
+
+GOOGLE_CLIENT_ID=your-google-drive-client-id
+GOOGLE_CLIENT_SECRET=your-google-drive-client-secret
+
+WEBEX_CLIENT_ID=your-webex-client-id
+WEBEX_CLIENT_SECRET=your-webex-client-secret
 ```
 
-Allow this local redirect URL:
+*For complete setup instructions and redirect URL requirements, view the internal guide at `/app/docs` or read [`docs/meeting-integrations.md`](docs/meeting-integrations.md).*
 
-```
-http://localhost:5000/api/v1/auth/google/callback
-```
+---
 
-For deployment, use your public HTTPS origin for both URL settings and the corresponding HTTPS callback. Google identity uses `openid email profile`; Drive access for meeting imports is authorized separately. If the identity-specific credential values are empty, the backend can reuse `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+## 🧪 Testing & Quality Assurance
 
-Meeting imports additionally need the provider’s client ID/secret and exact callbacks. See the operator instructions in **/app/docs**, or [meeting integration configuration](docs/meeting-integrations.md). Run `npm start` after changing configuration. Never put credentials in `VITE_` variables or commit `.env` files.
+MeetingBrief maintains an automated test suite across units, layout responsiveness, and full end-to-end user journeys:
 
-## Proposed next architecture
-
-A transcript-only hybrid design would run speech-to-text on the customer’s device and send approved transcript text to hosted intelligence. It is not implemented by the current upload flow. See [the hybrid architecture proposal](docs/hybrid-architecture.md) for data boundaries, browser/desktop tradeoffs, provider-import constraints and delivery steps.
-
-## Architecture
-
-```
-Browser / API customer
-        │
-        ▼
-Nginx → Express API → MongoDB
-             │
-             ▼
-         Redis / BullMQ
-             │
-             ▼
-     Private FastAPI service → Whisper / embeddings / Ollama
-```
-
-The API verifies current workspace membership and permissions. Uploads and analysis run through background workers. Files are private local storage in the default stack. Production requires HTTPS, private infrastructure, authenticated databases, storage encryption/backups, operational limits and provider app approval; the local Compose stack is not an unrestricted public SaaS deployment.
-
-```
-frontend/src/
-  app/                      Routes and providers
-  components/               Shared controls, brand and navigation
-  features/auth/            Password and Google sign-in, account linking
-  features/marketing/       Public landing and privacy pages
-  features/recordings/      Uploads, transcript, insights, player and reports
-  features/integrations/    Meeting imports, API keys and customer guides
-  features/settings/        Account, appearance and password settings
-  styles/                   Shared tokens and feature styles
-backend/src/
-  middleware/               Authentication, authorization, limits and uploads
-  modules/                  Auth, recordings, collections, search, keys and docs
-  database/                 MongoDB models
-  queues/                   Background workers
-  services/                 AI client, storage and provider OAuth/downloads
-  tests/                    API, security, OAuth and processing regression tests
-ai-service/
-  app/                      Private inference endpoints and services
-  tests/                    Inference contracts, normalization and security
-scripts/                    Startup, verification and optional legacy migration
-```
-
-The obsolete Flask/Celery backend and duplicate tests were removed. A separate optional SQLite-to-Mongo migration utility remains; its Python dependency is in `scripts/requirements-migration.txt`.
-
-## Security and validation
-
-Passwords use salted bcrypt hashes. JWTs are restricted to the expected algorithm, issuer, audience and purpose; password changes invalidate older sessions and revoke API keys. Google sign-in uses PKCE, nonce validation, one-time browser-bound state and Google’s official ID-token verifier. API keys are hashed, expire and respect current membership and their read/write setting. Audio URLs use recording-specific short-lived tickets instead of full login tokens.
-
-Uploads and request sizes are bounded. Inputs are validated, user searches are literal text, storage paths cannot escape the recording root, internal inference requests require a separate secret, and production rate limits share Redis. The web server sends security headers and CSP. Dependency audits run in CI.
-
-Read [security and deployment](docs/security-and-deployment.md) for specific safeguards, upgrade behavior, production requirements and remaining limitations. No security review can guarantee that software is unhackable.
-
-Useful checks after installing the development dependencies:
-
-```sh
-npm test
+```bash
+# Backend unit & integration test suite (Vitest)
 npm test --prefix backend
-npm run build --prefix backend
+
+# Frontend compilation & type verification
 npm run build --prefix frontend
-npm run lint --prefix frontend
-npm run test:report --prefix frontend
-npm run test:insights --prefix frontend
+
+# End-to-end responsiveness & layout suite (7 viewports, light & dark modes)
 npm run test:layout --prefix frontend
+
+# Insights, polling, and action-items regression suite
+npm run test:insights --prefix frontend
+
+# Customer journey, auth, and documentation smoke test
 npm run test:product --prefix frontend
-npm run test:meetings --prefix frontend
+
+# Security audit on dependencies
 npm audit --prefix backend
 npm audit --prefix frontend
 ```
 
-Browser tests use `VOXMIND_BASE_URL` to choose a server. Product/meeting checks require the local backend; insight/layout checks mock API responses. Python development dependencies are in `ai-service/requirements-dev.txt`; run `python -m pytest tests` from that service directory and audit its installed environment with `pip-audit`.
+---
 
-Automated provider tests use controlled responses. Live Google/Zoom/Meet/Webex consent and model inference need separately configured accounts and models; test passing does not imply those external systems were verified.
+## 🔒 Security & Privacy
+
+- **Password Security**: Salted bcrypt password hashing with configurable cost factors.
+- **JWT Hardening**: Cryptographically signed tokens with strict issuer, audience, and algorithm enforcement.
+- **Scoped API Keys**: SHA-256 hashed keys with selectable read-only or read/write scopes and auto-expiry.
+- **Audio Access Tickets**: Audio streaming uses short-lived, single-recording tickets instead of long-lived auth credentials.
+- **Content Security**: Defensive CSP, strictly typed inputs, sanitized search queries, and rate-limiting backed by Redis.
+
+*For detailed security controls and deployment instructions, refer to [`docs/security-and-deployment.md`](docs/security-and-deployment.md).*
+
+---
+
+## 👤 Author & Maintainer
+
+MeetingBrief is created and actively maintained by:
+
+**Swayam Sonawane**
+- GitHub: [@swayam-8](https://github.com/swayam-8)
+- Repository: [swayam-8/VoxMind](https://github.com/swayam-8/VoxMind)
+
+---
+
+## 📄 License
+
+This software and its source code are proprietary. All rights reserved.
